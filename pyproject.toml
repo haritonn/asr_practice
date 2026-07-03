@@ -1,0 +1,32 @@
+[project]
+name = "asr_practice"
+version = "0.1.0"
+description = "ASR (Auto Speech Recognition) system"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "sentence-transformers>=5.1.0",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "jupyter>=1.1.1",
+    "numpy>=2.4.4",
+    "datasets>=4.8.4",
+    "transformers>=5.5.4",
+    "librosa",
+    "matplotlib",
+    "seaborn",
+    "scikit-learn",
+    "clearml",
+    "jiwer>=4.0.0",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+torchaudio = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
