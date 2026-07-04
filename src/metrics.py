@@ -1,0 +1,45 @@
+import re
+
+import jiwer
+
+
+def normalize_text(text: str) -> str:
+    """Removing anything except words for metrics computation"""
+    transformation = jiwer.Compose(
+        [jiwer.RemovePunctuation(), jiwer.RemoveMultipleSpaces(), jiwer.Strip()]
+    )
+
+    return transformation(text)
+
+
+def compute_cer(refs: list[str], preds: list[str]):
+    """Computing WER for single pair or as average for lists. Input should be normalized"""
+    avg_cer = jiwer.cer(refs, preds)
+    cers = [jiwer.cer(ref, pred) for ref, pred in zip(refs, preds)]
+
+    return {"average": avg_cer, "sample_scores": cers}
+
+
+def compute_wer(refs: list[str], preds: list[str]):
+    """Computing WER for single pair or as average for lists. Input should be normalized"""
+    avg_wer = jiwer.wer(refs, preds)
+    wers = [jiwer.wer(ref, pred) for ref, pred in zip(refs, preds)]
+
+    return {"average": avg_wer, "sample_scores": wers}
+
+
+def compute_metrics(refs: list[str], preds: list[str]):
+    """Computing & returning all implemented metrics (currently: CER, WER)"""
+    if len(refs) != len(preds):
+        raise ValueError("refs and preds must be the same length")
+    normalized_refs, normalized_preds = (
+        [normalize_text(text) for text in refs],
+        [normalize_text(text) for text in preds],
+    )
+
+    cer, wer = (
+        compute_cer(normalized_refs, normalized_preds),
+        compute_wer(normalized_refs, normalized_preds),
+    )
+
+    return {"cer": cer, "wer": wer}
