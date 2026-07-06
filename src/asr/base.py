@@ -12,7 +12,7 @@ class BaseAsr(ABC):
 
     def unload(self) -> None:
         """Optional method for clearning space after model usage"""
-        raise NotImplementedError
+        pass
 
     def __enter__(self):
         """Optional method for 'with' context"""

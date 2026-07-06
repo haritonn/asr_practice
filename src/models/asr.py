@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class Word:
     text: str
     start: float
     end: float
 
 
-@dataclass
+@dataclass(slots=True)
 class Segment:
     text: str
     start: float
@@ -16,7 +16,7 @@ class Segment:
     words: list[Word]
 
 
-@dataclass
+@dataclass(slots=True)
 class TranscribeResult:
     text: str
     segments: list[Segment]
