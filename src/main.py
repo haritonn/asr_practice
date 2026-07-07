@@ -3,14 +3,20 @@ import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
-from typing import Optional
+from typing import List
 
-from src.asr.whisper import WhisperAsr
 from src.metrics import compute_metrics
-from src.models.configs import SileroConfig, WhisperConfig
-from src.models.inference import InferenceResults, Metrics
+from src.models.inference import InferenceResults
 from src.pipeline import inference
-from src.vad.silero_vad import SileroVoiceDetection
+
+
+def display_metrics(data: List[InferenceResults]):
+    """Computing & pretty-printing metrics"""
+    metrics = compute_metrics(data)
+    print(
+        "\n"
+        + metrics.pretty_print(show_per_item=True, show_full_text=True, max_text_len=50)
+    )
 
 
 def main(args):
@@ -42,37 +48,8 @@ def main(args):
                     )
 
             logger.info("Done. Computing metrics...")
+            display_metrics(inference_data)
 
-            metrics_dict = compute_metrics(inference_data)
-
-            per_item = []
-            for i, res in enumerate(inference_data):
-                per_item.append(
-                    {
-                        "audio_path": res.audio_path,
-                        "ground_truth": res.ground_truth,
-                        "predicted": res.predicted,
-                        "wer": metrics_dict["wer"]["sample_scores"][i],
-                        "cer": metrics_dict["cer"]["sample_scores"][i],
-                        "wil": metrics_dict["wil"]["sample_scores"][i],
-                        "wip": metrics_dict["wip"]["sample_scores"][i],
-                    }
-                )
-
-            metrics = Metrics(
-                wer=metrics_dict["wer"]["average"],
-                cer=metrics_dict["cer"]["average"],
-                wil=metrics_dict["wil"]["average"],
-                wip=metrics_dict["wip"]["average"],
-                per_item=per_item,
-            )
-
-            print(
-                "\n"
-                + metrics.pretty_print(
-                    show_per_item=True, show_full_text=True, max_text_len=50
-                )
-            )
         except Exception as e:
             logger.exception(f"Error occured during reading: {e}")
             return
@@ -81,37 +58,8 @@ def main(args):
         logger.info("Making inference on validation data")
         results = inference()
         logger.info("Computing metrics...")
+        display_metrics(results)
 
-        metrics_dict = compute_metrics(results)
-
-        per_item = []
-        for i, res in enumerate(results):
-            per_item.append(
-                {
-                    "audio_path": res.audio_path,
-                    "ground_truth": res.ground_truth,
-                    "predicted": res.predicted,
-                    "wer": metrics_dict["wer"]["sample_scores"][i],
-                    "cer": metrics_dict["cer"]["sample_scores"][i],
-                    "wil": metrics_dict["wil"]["sample_scores"][i],
-                    "wip": metrics_dict["wip"]["sample_scores"][i],
-                }
-            )
-
-        metrics = Metrics(
-            wer=metrics_dict["wer"]["average"],
-            cer=metrics_dict["cer"]["average"],
-            wil=metrics_dict["wil"]["average"],
-            wip=metrics_dict["wip"]["average"],
-            per_item=per_item,
-        )
-
-        print(
-            "\n"
-            + metrics.pretty_print(
-                show_per_item=True, show_full_text=True, max_text_len=50
-            )
-        )
         if (results_path := args.results_path) is not None:
             logger.info(f"Writing into {results_path}")
             with open(results_path, "w", encoding="utf-8") as f:

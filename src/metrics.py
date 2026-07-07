@@ -1,8 +1,8 @@
-from typing import Dict, List
+from typing import List
 
 import jiwer
 
-from src.models.inference import InferenceResults
+from src.models.inference import InferenceResults, Metrics
 
 
 def normalize_text(text: str) -> str:
@@ -46,7 +46,7 @@ def compute_wip(refs: list[str], preds: list[str]):
     return {"average": avg_wip, "sample_scores": wips}
 
 
-def compute_metrics(inference_data: List[InferenceResults]) -> Dict:
+def compute_metrics(inference_data: List[InferenceResults]) -> Metrics:
     """Computing & returning all implemented metrics (currently: CER, WER)"""
     refs = [obj.ground_truth for obj in inference_data]
     preds = [obj.predicted for obj in inference_data]
@@ -57,13 +57,33 @@ def compute_metrics(inference_data: List[InferenceResults]) -> Dict:
         [normalize_text(text) for text in preds],
     )
 
-    cer, wer = (
+    cer_res, wer_res = (
         compute_cer(normalized_refs, normalized_preds),
         compute_wer(normalized_refs, normalized_preds),
     )
-    wil, wip = (
+    wil_res, wip_res = (
         compute_wil(normalized_refs, normalized_preds),
         compute_wip(normalized_refs, normalized_preds),
     )
 
-    return {"cer": cer, "wer": wer, "wil": wil, "wip": wip}
+    per_item = []
+    for i, res in enumerate(inference_data):
+        per_item.append(
+            {
+                "audio_path": res.audio_path,
+                "ground_truth": res.ground_truth,
+                "predicted": res.predicted,
+                "wer": wer_res["sample_scores"][i],
+                "cer": cer_res["sample_scores"][i],
+                "wil": wil_res["sample_scores"][i],
+                "wip": wip_res["sample_scores"][i],
+            }
+        )
+
+    return Metrics(
+        wer=wer_res["average"],
+        cer=cer_res["average"],
+        wil=wil_res["average"],
+        wip=wip_res["average"],
+        per_item=per_item,
+    )

@@ -6,6 +6,10 @@ from src.models.configs import SileroConfig, WhisperConfig
 from src.models.inference import InferenceResults
 from src.vad.silero_vad import SileroVoiceDetection
 
+# Mock-values, should be removed in future
+GD = "Какие крупнейшие сражения ознаменовали коренной перелом в ходе Великой Отечественной Войны?"
+SAMPLE = Path("src/sample.opus")
+
 
 def inference() -> List[InferenceResults]:
     """Inference on validation dataset. Config parameters hard-coded for now, will be fixed in future."""
@@ -31,15 +35,9 @@ def inference() -> List[InferenceResults]:
         asr = WhisperAsr(whisper_config)
         vad = SileroVoiceDetection(silero_config)
     except Exception as e:
-        raise RuntimeError(e)
+        raise RuntimeError("Failed to load models") from e
 
-    sample = Path("src/sample.opus")
+    speech_segments = vad.detect(SAMPLE)
+    result = asr.transcribe(SAMPLE, speech_segments)
 
-    speech_segments = vad.detect(sample)
-    for i, seg in enumerate(speech_segments):
-        pass
-
-    result = asr.transcribe(sample, speech_segments)
-    gd = "Какие крупнейшие сражения ознаменовали коренной перелом в ходе Великой Отечественной Войны?"
-
-    return [InferenceResults(audio_path=sample, ground_truth=gd, predicted=result.text)]
+    return [InferenceResults(audio_path=SAMPLE, ground_truth=GD, predicted=result.text)]
