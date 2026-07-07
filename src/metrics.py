@@ -1,6 +1,8 @@
-import re
+from typing import Dict, List
 
 import jiwer
+
+from src.models.inference import InferenceResults
 
 
 def normalize_text(text: str) -> str:
@@ -44,8 +46,10 @@ def compute_wip(refs: list[str], preds: list[str]):
     return {"average": avg_wip, "sample_scores": wips}
 
 
-def compute_metrics(refs: list[str], preds: list[str]):
+def compute_metrics(inference_data: List[InferenceResults]) -> Dict:
     """Computing & returning all implemented metrics (currently: CER, WER)"""
+    refs = [obj.ground_truth for obj in inference_data]
+    preds = [obj.predicted for obj in inference_data]
     if len(refs) != len(preds):
         raise ValueError("refs and preds must be the same length")
     normalized_refs, normalized_preds = (

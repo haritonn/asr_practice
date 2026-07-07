@@ -23,6 +23,8 @@ dependencies = [
     "ctranslate2>=4.8.1",
     "silero-vad>=6.2.1",
     "pydub>=0.25.1",
+    "argparse>=1.4.0",
+    "tabulate>=0.10.0",
 ]
 
 [tool.uv.sources]
