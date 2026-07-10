@@ -31,8 +31,8 @@ class ProductCatalog:
         with path.open(encoding="utf-8") as source:
             data = json.load(source)
 
-        products: dict[str, Product] = {}
-        canonical_names: set[str] = set()
+        products = {}
+        canonical_names = set()
         for item in data["products"]:
             product = Product(
                 id=item["id"],

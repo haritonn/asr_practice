@@ -32,8 +32,8 @@ class WhisperAsr(BaseAsr):
             )  # language is bad field in this case...
 
         audio_segment = AudioSegment.from_file(audio)
-        all_segments: list[Segment] = []
-        all_words: list[str] = []
+        all_segments = []
+        all_words = []
         detected_language = None
 
         for speech_segment in speech_segments:

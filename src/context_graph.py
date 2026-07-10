@@ -31,7 +31,7 @@ class ContextGraphRecognizer:
         self.config = config
         self.context_biasing = context_biasing
         self.blank_id = model.decoding.blank_id
-        self._graphs: dict[frozenset[str], object] = {}
+        self._graphs = {}
         self._global_product_ids = frozenset(catalog.products)
 
     def recognize(
@@ -52,7 +52,7 @@ class ContextGraphRecognizer:
         segment_end: float,
     ) -> list[ProductMention]:
         frame_seconds = (segment_end - segment_start) / max(logprobs.shape[0], 1)
-        best_by_id: dict[str, _SpottedItem] = {}
+        best_by_id = {}
         for hit in product_hits:
             previous = best_by_id.get(hit.label)
             if previous is None or hit.score > previous.score:
@@ -68,8 +68,12 @@ class ContextGraphRecognizer:
                     manufacturer=product.manufacturer,
                     source_catalog=product.source_catalog,
                     score=hit.score,
-                    start=max(segment_start, segment_start + hit.start_frame * frame_seconds),
-                    end=min(segment_end, segment_start + (hit.end_frame + 1) * frame_seconds),
+                    start=max(
+                        segment_start, segment_start + hit.start_frame * frame_seconds
+                    ),
+                    end=min(
+                        segment_end, segment_start + (hit.end_frame + 1) * frame_seconds
+                    ),
                 )
             )
         return sorted(mentions, key=lambda item: (item.start, -item.score))
@@ -78,7 +82,10 @@ class ContextGraphRecognizer:
         graph = self._graphs.get(product_ids)
         if graph is None:
             graph = self._build_graph(
-                [(product.id, product.graph_forms) for product in self._products(product_ids)]
+                [
+                    (product.id, product.graph_forms)
+                    for product in self._products(product_ids)
+                ]
             )
             self._graphs[product_ids] = graph
         return graph
