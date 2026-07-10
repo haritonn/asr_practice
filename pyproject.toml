@@ -1,43 +1,20 @@
 [project]
-name = "asr_practice"
-version = "0.1.0"
-description = "ASR (Auto Speech Recognition) system"
+name = "fire-catalog-benchmark"
+version = "0.2.0"
+description = "Reproducible CTC product-recognition benchmark for fire-safety equipment"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10,<3.11"
 dependencies = [
-    "sentence-transformers>=5.1.0",
-    "torch",
-    "torchvision",
-    "torchaudio",
-    "jupyter>=1.1.1",
-    "numpy>=2.4.4",
-    "datasets>=4.8.4",
-    "transformers>=5.5.4",
-    "librosa",
-    "matplotlib",
-    "seaborn",
-    "scikit-learn",
-    "clearml",
-    "jiwer>=4.0.0",
-    "faster-whisper>=1.2.1",
-    "ctranslate2>=4.8.1",
-    "silero-vad>=6.2.1",
+    "jiwer>=3,<4",
+    "nemo-toolkit[asr]>=2.7.3,<3",
+    "numpy>=1.26,<2.3",
     "pydub>=0.25.1",
-    "argparse>=1.4.0",
-    "tabulate>=0.10.0",
+    "soundfile>=0.13.1",
+    "tabulate>=0.9",
+    "torch @ https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl#sha256=1f04a373a3f643821f721da9898ef77dce73b5b6bfc64486f0976f7fb5f90e83",
+    "torchaudio @ https://download-r2.pytorch.org/whl/cpu/torchaudio-2.7.1%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl#sha256=a36569e17ff4519a21f2113e9a19a8def0d70e2fd9fabc9105ca57dee3809443",
 ]
 
-[tool.uv.sources]
-torch = { index = "pytorch-cu126" }
-torchvision = { index = "pytorch-cu126" }
-torchaudio = { index = "pytorch-cu126" }
-
-[[tool.uv.index]]
-name = "pytorch-cu126"
-url = "https://download.pytorch.org/whl/cu126"
-explicit = true
-
-[tool.uv.workspace]
-members = [
-    "asr_practice",
-]
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]

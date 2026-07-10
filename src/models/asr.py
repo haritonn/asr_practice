@@ -1,23 +1,12 @@
 from dataclasses import dataclass
 
 
-@dataclass(slots=True)
-class Word:
-    text: str
+@dataclass(frozen=True, slots=True)
+class ProductMention:
+    product_id: str
+    canonical_name: str
+    manufacturer: str
+    source_catalog: str
+    score: float
     start: float
     end: float
-
-
-@dataclass(slots=True)
-class Segment:
-    text: str
-    start: float
-    end: float
-    words: list[Word]
-
-
-@dataclass(slots=True)
-class TranscribeResult:
-    text: str
-    segments: list[Segment]
-    language: str

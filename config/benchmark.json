@@ -1,0 +1,13 @@
+{
+  "catalog_path": "resources/fire_catalog.json",
+  "model_path": "models/stt_ru_conformer_ctc_large.nemo",
+  "device": "cpu",
+  "output_dir": "data/fire_catalog_benchmark",
+  "sample_rate": 48000,
+  "dev_speakers": ["aidar", "baya"],
+  "test_speakers": ["kseniya", "xenia"],
+  "conditions": ["clean", "fast", "telephone", "noise", "reverb"],
+  "candidate_context_weights": [4.0, 6.0, 8.0, 10.0, 12.0],
+  "keyword_threshold": -12.0,
+  "ctc_alignment_weight": 0.0
+}
