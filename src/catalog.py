@@ -11,8 +11,6 @@ from pathlib import Path
 class Product:
     id: str
     canonical_name: str
-    manufacturer: str
-    source_catalog: str
     spoken_forms: tuple[str, ...]
     ctc_forms: tuple[str, ...]
 
@@ -31,14 +29,16 @@ class ProductCatalog:
         with path.open(encoding="utf-8") as source:
             data = json.load(source)
 
+        for include in data.get("includes", []):
+            with (path.parent / include).open(encoding="utf-8") as source:
+                data["products"].extend(json.load(source)["products"])
+
         products = {}
         canonical_names = set()
         for item in data["products"]:
             product = Product(
                 id=item["id"],
                 canonical_name=item["canonical_name"],
-                manufacturer=item["manufacturer"],
-                source_catalog=item["source_catalog"],
                 spoken_forms=tuple(item["spoken_forms"]),
                 ctc_forms=tuple(item.get("ctc_forms", ())),
             )

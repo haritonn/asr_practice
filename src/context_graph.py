@@ -65,8 +65,6 @@ class ContextGraphRecognizer:
                 ProductMention(
                     product_id=product.id,
                     canonical_name=product.canonical_name,
-                    manufacturer=product.manufacturer,
-                    source_catalog=product.source_catalog,
                     score=hit.score,
                     start=max(
                         segment_start, segment_start + hit.start_frame * frame_seconds

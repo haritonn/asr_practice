@@ -473,6 +473,13 @@ def main() -> None:
         for item in test_results:
             destination.write(json.dumps(item, ensure_ascii=False) + "\n")
     print(f"\nSaved: {output / 'report.json'} and {output / 'results.jsonl'}")
+    print("\nFinal held-out metrics:")
+    _print_summary(test_metrics)
+    print(
+        "Base CTC: "
+        f"WER {base_asr['wer']:.2%}, CER {base_asr['cer']:.2%}, "
+        f"WIL {base_asr['wil']:.2%}, WIP {base_asr['wip']:.2%}"
+    )
 
 
 if __name__ == "__main__":
