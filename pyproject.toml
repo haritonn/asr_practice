@@ -9,10 +9,11 @@ dependencies = [
     "nemo-toolkit[asr]>=2.7.3,<3",
     "numpy>=1.26,<2.3",
     "pydub>=0.25.1",
+    "silero-vad>=6.2.1",
     "soundfile>=0.13.1",
     "tabulate>=0.9",
-    "torch @ https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl#sha256=1f04a373a3f643821f721da9898ef77dce73b5b6bfc64486f0976f7fb5f90e83",
-    "torchaudio @ https://download-r2.pytorch.org/whl/cpu/torchaudio-2.7.1%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl#sha256=a36569e17ff4519a21f2113e9a19a8def0d70e2fd9fabc9105ca57dee3809443",
+    "torch @ https://download-r2.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp310-cp310-manylinux_2_28_x86_64.whl",
+    "torchaudio @ https://download-r2.pytorch.org/whl/cu118/torchaudio-2.7.1%2Bcu118-cp310-cp310-manylinux_2_28_x86_64.whl",
 ]
 
 [tool.uv]
