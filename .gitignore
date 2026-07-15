@@ -14,4 +14,8 @@ data/
 models/
 .ipynb_checkpoints/
 resources/
+artifacts/
+reports/
 scripts/
+src/sample.reference.json
+src/sample.wav

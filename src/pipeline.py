@@ -1,43 +1,74 @@
+from __future__ import annotations
+
+import json
 from pathlib import Path
-from typing import List
 
-from src.asr.whisper import WhisperAsr
-from src.models.configs import SileroConfig, WhisperConfig
-from src.models.inference import InferenceResults
-from src.vad.silero_vad import SileroVoiceDetection
+from src.asr.base import BaseAsr
+from src.asr.terminology import CtcTerminologyRecognizer
+from src.diarization.base import BaseDiarizer
+from src.diarization.transcript import assign_speakers, speaker_for_interval
+from src.models.diarization import (
+    DiarizedTranscript,
+    SpeakerAttributedProductMention,
+    TimedTranscriptSegment,
+)
+from src.vad.base import BaseVoiceDetection
+class DiarizedSpeechPipeline:
+    """Run VAD, ASR and diarization and produce one speaker-attributed transcript."""
 
-# Mock-values, should be removed in future
-GD = "Какие крупнейшие сражения ознаменовали коренной перелом в ходе Великой Отечественной Войны?"
-SAMPLE = Path("src/sample.opus")
+    def __init__(
+        self,
+        asr: BaseAsr,
+        vad: BaseVoiceDetection,
+        diarizer: BaseDiarizer,
+        terminology: CtcTerminologyRecognizer | None = None,
+    ):
+        self.asr = asr
+        self.vad = vad
+        self.diarizer = diarizer
+        self.terminology = terminology
 
+    def transcribe(self, audio_path: Path) -> DiarizedTranscript:
+        speech_segments = self.vad.detect(audio_path)
+        transcription = self.asr.transcribe(audio_path, speech_segments)
+        diarization = self.diarizer.diarize(audio_path)
+        product_mentions = []
+        if self.terminology is not None:
+            product_mentions = [
+                SpeakerAttributedProductMention(
+                    product_id=mention.product_id,
+                    canonical_name=mention.canonical_name,
+                    score=mention.score,
+                    start=mention.start,
+                    end=mention.end,
+                    speaker_id=speaker_for_interval(
+                        mention.start, mention.end, diarization.turns
+                    ),
+                )
+                for mention in self.terminology.recognize(audio_path)
+            ]
+        segments = [
+            TimedTranscriptSegment(
+                start=segment.start,
+                end=segment.end,
+                text=segment.text.strip(),
+            )
+            for segment in transcription.segments
+            if segment.text.strip()
+        ]
+        return DiarizedTranscript(
+            audio_path=audio_path,
+            text=transcription.text,
+            language=transcription.language,
+            num_speakers=diarization.num_speakers,
+            speaker_turns=diarization.turns,
+            segments=assign_speakers(segments, diarization.turns),
+            product_mentions=product_mentions,
+        )
 
-def inference() -> List[InferenceResults]:
-    """Inference on validation dataset. Config parameters hard-coded for now, will be fixed in future."""
-    whisper_config = WhisperConfig(
-        model_size_or_path="medium",
-        device="cpu",
-        beam_size=1,
-        language="ru",
-        word_timestamps=False,
-    )
-    silero_config = SileroConfig(
-        model_path=Path("src/silero_vad_v6.2.1.onnx"),  # not needed for now
-        window_size=512,
-        device="cpu",
-        sample_rate=16000,
-        speech_threshold=0.7,
-        silence_threshold=0.35,
-        min_speech_duration_ms=100,
-        min_silence_duration_ms=500,
-    )
-
-    try:
-        asr = WhisperAsr(whisper_config)
-        vad = SileroVoiceDetection(silero_config)
-    except Exception as e:
-        raise RuntimeError("Failed to load models") from e
-
-    speech_segments = vad.detect(SAMPLE)
-    result = asr.transcribe(SAMPLE, speech_segments)
-
-    return [InferenceResults(audio_path=SAMPLE, ground_truth=GD, predicted=result.text)]
+    def transcribe_to_json(self, audio_path: Path, output_path: Path) -> DiarizedTranscript:
+        result = self.transcribe(audio_path)
+        output_path.write_text(
+            json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return result

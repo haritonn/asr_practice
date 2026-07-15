@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Sequence
 
 from ..models.asr import TranscribeResult
+from ..models.vad import SpeechSegment
 
 
 class BaseAsr(ABC):
     @abstractmethod
-    def transcribe(self, audio: Path) -> TranscribeResult:
+    def transcribe(
+        self, audio: Path, speech_segments: Sequence[SpeechSegment]
+    ) -> TranscribeResult:
         """Required method for getting (raw) text from audio"""
         raise NotImplementedError
 

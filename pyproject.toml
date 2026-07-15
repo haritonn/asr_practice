@@ -5,6 +5,7 @@ description = "Reproducible CTC product-recognition benchmark for fire-safety eq
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
+    "faster-whisper>=1.2.1",
     "jiwer>=3,<4",
     "nemo-toolkit[asr]>=2.7.3,<3",
     "numpy>=1.26,<2.3",

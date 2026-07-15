@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 
@@ -7,6 +8,50 @@ class ContextGraphConfig:
     context_weight: float
     keyword_threshold: float
     ctc_alignment_weight: float
+
+
+@dataclass(frozen=True, slots=True)
+class WhisperConfig:
+    model_size_or_path: str | Path
+    device: str
+    compute_type: str | None
+    beam_size: int
+    language: str
+    word_timestamps: bool
+
+    def model_kwargs(self) -> dict:
+        kwargs = {"model_size_or_path": self.model_size_or_path, "device": self.device}
+        if self.compute_type is not None:
+            kwargs["compute_type"] = self.compute_type
+        return kwargs
+
+    def transcribe_kwargs(self) -> dict:
+        return {
+            "beam_size": self.beam_size,
+            "language": self.language,
+            "word_timestamps": self.word_timestamps,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GigaAmConfig:
+    """Configuration for a locally cached GigaAM CTC checkpoint."""
+
+    model_id: str = "ai-sage/GigaAM-Multilingual"
+    revision: str = "large_ctc"
+    device: str = "cuda"
+    batch_size: int = 4
+    local_files_only: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class TerminologyConfig:
+    catalog_path: Path
+    model_path: Path
+    device: str = "cpu"
+    context_weight: float = 12.0
+    keyword_threshold: float = -12.0
+    ctc_alignment_weight: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +98,7 @@ class NemoDiarizationConfig:
 
 @dataclass(frozen=True, slots=True)
 class SileroConfig:
-    model_path: str
+    model_path: str | Path
     window_size: int
     device: str
     sample_rate: int
