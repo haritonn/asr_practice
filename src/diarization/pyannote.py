@@ -44,7 +44,9 @@ class PyannoteCommunityDiarizer(BaseDiarizer):
             raise RuntimeError(
                 "Set HF_TOKEN or pass --hf-token after accepting model terms."
             )
-        self._pipeline = Pipeline.from_pretrained(self.config.model_id, token=access_token)
+        self._pipeline = Pipeline.from_pretrained(
+            self.config.model_id, token=access_token
+        )
         self._pipeline.to(torch.device(self.config.device))
         self._torch = torch
 
