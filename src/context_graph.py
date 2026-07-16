@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from nemo.collections.asr.parts import context_biasing
 
 from .catalog import Product, ProductCatalog
 from .models.asr import ProductMention
@@ -24,8 +25,6 @@ class _SpottedItem:
 
 class ContextGraphRecognizer:
     def __init__(self, model, catalog: ProductCatalog, config: ContextGraphConfig):
-        from nemo.collections.asr.parts import context_biasing
-
         self.model = model
         self.catalog = catalog
         self.config = config

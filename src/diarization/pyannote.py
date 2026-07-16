@@ -5,9 +5,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import soundfile as sf
+import torch
+from pyannote.audio import Pipeline
+
 from src.diarization.base import BaseDiarizer
 from src.models.configs import PyannoteDiarizationConfig
 from src.models.diarization import DiarizationResult, SpeakerTurn
+from src.runtime.resources import release_accelerator_memory
 
 
 class PyannoteCommunityDiarizer(BaseDiarizer):
@@ -30,35 +35,29 @@ class PyannoteCommunityDiarizer(BaseDiarizer):
         ):
             raise ValueError("min_speakers must not exceed max_speakers")
 
-        try:
-            import torch
-            from pyannote.audio import Pipeline
-        except ImportError as error:
-            raise RuntimeError(
-                "pyannote runtime is missing. Use the dedicated environment documented "
-                "in README.md."
-            ) from error
-
         access_token = token or os.environ.get("HF_TOKEN")
         if not access_token:
             raise RuntimeError(
                 "Set HF_TOKEN or pass --hf-token after accepting model terms."
             )
-        self._pipeline = Pipeline.from_pretrained(
-            self.config.model_id, token=access_token
-        )
-        self._pipeline.to(torch.device(self.config.device))
-        self._torch = torch
+        self._token = access_token
+        self._pipeline = None
+
+    def _ensure_loaded(self) -> None:
+        if self._pipeline is None:
+            self._pipeline = Pipeline.from_pretrained(
+                self.config.model_id, token=self._token
+            )
+            self._pipeline.to(torch.device(self.config.device))
 
     def diarize(self, audio_path: Path) -> DiarizationResult:
         if not audio_path.is_file():
             raise FileNotFoundError(audio_path)
+        self._ensure_loaded()
         # Supplying a waveform avoids a runtime dependency on torchcodec/FFmpeg and
         # keeps CPU and CUDA inference paths identical.
-        import soundfile as sf
-
         audio, sample_rate = sf.read(audio_path, dtype="float32", always_2d=True)
-        waveform = self._torch.from_numpy(audio.T.copy())
+        waveform = torch.from_numpy(audio.T.copy())
         output = self._pipeline(
             {"waveform": waveform, "sample_rate": sample_rate},
             **self.config.inference_kwargs(),
@@ -88,3 +87,9 @@ class PyannoteCommunityDiarizer(BaseDiarizer):
             key=lambda turn: (turn.start, turn.end, turn.speaker_id),
         )
         return DiarizationResult(turns=turns, num_speakers=len(speaker_map))
+
+    def unload(self) -> None:
+        if self._pipeline is None:
+            return
+        self._pipeline = None
+        release_accelerator_memory()

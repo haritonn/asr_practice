@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
-import gc
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Sequence
 
+import nemo.collections.asr as nemo_asr
 import numpy as np
 import soundfile as sf
+from pydub import AudioSegment
 
 from src.catalog import ProductCatalog
 from src.context_graph import ContextGraphRecognizer
 from src.models.asr import ProductMention
 from src.models.configs import ContextGraphConfig, TerminologyConfig
+from src.models.vad import SpeechSegment
 from src.nemo_runtime import quiet_nemo_transcribe, silence_nemo_configuration_logs
+from src.runtime.resources import release_accelerator_memory
 
 
 class CtcTerminologyRecognizer:
@@ -31,8 +36,6 @@ class CtcTerminologyRecognizer:
         if not self.config.model_path.is_file():
             raise FileNotFoundError(self.config.model_path)
         silence_nemo_configuration_logs()
-        import nemo.collections.asr as nemo_asr
-
         self._model = nemo_asr.models.ASRModel.restore_from(
             str(self.config.model_path), map_location=self.config.device
         ).eval()
@@ -46,8 +49,36 @@ class CtcTerminologyRecognizer:
             ),
         )
 
-    def recognize(self, audio_path: Path) -> list[ProductMention]:
+    def recognize(
+        self,
+        audio_path: Path,
+        speech_segments: Sequence[SpeechSegment] | None = None,
+    ) -> list[ProductMention]:
+        """Spot terms per VAD segment, preserving offsets in the source audio."""
         self._ensure_loaded()
+        if speech_segments is None:
+            return self._recognize_file(
+                audio_path, 0.0, float(sf.info(audio_path).duration)
+            )
+
+        audio = AudioSegment.from_file(audio_path)
+        mentions: list[ProductMention] = []
+        with TemporaryDirectory(prefix="terminology_segments_") as temporary_directory:
+            for index, segment in enumerate(speech_segments):
+                start_ms = max(0, round(segment.start * 1_000))
+                end_ms = min(len(audio), round(segment.end * 1_000))
+                if end_ms <= start_ms:
+                    continue
+                segment_path = Path(temporary_directory) / f"segment_{index:04d}.wav"
+                audio[start_ms:end_ms].export(segment_path, format="wav")
+                mentions.extend(
+                    self._recognize_file(segment_path, segment.start, segment.end)
+                )
+        return mentions
+
+    def _recognize_file(
+        self, audio_path: Path, segment_start: float, segment_end: float
+    ) -> list[ProductMention]:
         with quiet_nemo_transcribe():
             hypothesis = self._model.transcribe(
                 [str(audio_path)], batch_size=1, return_hypotheses=True, verbose=False
@@ -56,10 +87,10 @@ class CtcTerminologyRecognizer:
         if hasattr(alignment, "cpu"):
             alignment = alignment.cpu().numpy()
         return self._recognizer.recognize(
-            np.asarray(alignment), 0.0, float(sf.info(audio_path).duration)
+            np.asarray(alignment), segment_start, segment_end
         )
 
     def unload(self) -> None:
         self._model = None
         self._recognizer = None
-        gc.collect()
+        release_accelerator_memory()

@@ -6,11 +6,11 @@ import logging
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from io import StringIO
 
+from nemo.utils import logging as nemo_logging
+
 
 def silence_nemo_configuration_logs() -> None:
     """Keep errors visible while hiding NeMo setup/configuration diagnostics."""
-    from nemo.utils import logging as nemo_logging
-
     nemo_logging.setLevel(logging.ERROR)
     for name in (
         "nemo",

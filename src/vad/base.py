@@ -12,5 +12,5 @@ class BaseVoiceDetection(ABC):
         raise NotImplementedError
 
     def unload(self) -> None:
-        """Optional method for clearning space after model usage"""
-        pass
+        """Release resources when an adapter owns them."""
+        return None

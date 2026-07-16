@@ -1,0 +1,180 @@
+"""Console and Typst renderers for a diarized transcript."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from src.models.diarization import DiarizedTranscript
+
+
+def dialogue_rows(result: DiarizedTranscript) -> list[dict]:
+    """Combine speaker-attributed ASR segments and terminology into dialogue rows."""
+    rows = []
+    for segment in result.segments:
+        terms = [
+            mention.canonical_name
+            for mention in result.product_mentions
+            if min(segment.end, mention.end) > max(segment.start, mention.start)
+        ]
+        rows.append(
+            {
+                "speaker_id": segment.speaker_id,
+                "start": segment.start,
+                "end": segment.end,
+                "text": segment.text,
+                "terms": list(dict.fromkeys(terms)),
+            }
+        )
+    return rows
+
+
+def format_dialogue(rows: list[dict]) -> str:
+    """Render dialogue rows in the compact format intended for people."""
+    lines = []
+    previous_speaker = None
+    for row in rows:
+        if previous_speaker is not None and row["speaker_id"] != previous_speaker:
+            lines.append("")
+        speaker = (row["speaker_id"] or "UNKNOWN").replace("_", "")
+        terms = ", ".join(row["terms"]) or "—"
+        lines.extend(
+            (
+                f"[{speaker}] {_seconds(row['start'])} - {_seconds(row['end'])}",
+                f"{row['text']} | {terms}",
+            )
+        )
+        previous_speaker = row["speaker_id"]
+    return "\n".join(lines)
+
+
+def format_quality_metrics(metrics: dict) -> str:
+    """Render available quality metrics for the console."""
+    if not metrics["available"]:
+        return f"Quality metrics: unavailable ({metrics['reason']})"
+
+    lines = [
+        "Quality metrics:",
+        f"ASR: WER {metrics['asr']['wer']:.2%}, CER {metrics['asr']['cer']:.2%}",
+    ]
+    if "diarization" in metrics:
+        lines.append(f"Diarization: DER {metrics['diarization']['der']:.2%}")
+    if "speaker_count" in metrics:
+        speaker_count = metrics["speaker_count"]
+        lines.append(
+            "Speakers: "
+            f"{speaker_count['predicted']}/{speaker_count['expected']} "
+            f"({'OK' if speaker_count['correct'] else 'mismatch'})"
+        )
+    if "terminology" in metrics:
+        terminology = metrics["terminology"]
+        lines.append(
+            "Terminology: "
+            f"P {terminology['precision']:.2%}, R {terminology['recall']:.2%}, "
+            f"F1 {terminology['f1']:.2%}"
+        )
+    return "\n".join(lines)
+
+
+def format_runtime_metrics(runtime: dict) -> str:
+    """Render stage timings and runtime configuration for the console."""
+    stage_lines = [
+        f"{name}: {seconds:.1f}s" for name, seconds in runtime["stages"].items()
+    ]
+    canonical_audio = runtime["canonical_audio"]
+    devices = ", ".join(
+        f"{stage}={device}" for stage, device in runtime["devices"].items()
+    )
+    return "\n".join(
+        [
+            "Runtime:",
+            "Canonical audio: "
+            f"{canonical_audio['channels']} channel(s), "
+            f"{canonical_audio['sample_rate']} Hz, {canonical_audio['subtype']}",
+            *stage_lines,
+            f"Total: {runtime['total_seconds']:.1f}s",
+            f"Audio: {runtime['audio_seconds']:.1f}s",
+            f"RTF: {runtime['realtime_factor']:.2f}x",
+            f"Devices: {devices}",
+        ]
+    )
+
+
+def write_typst_document(project_root: Path, json_path: Path) -> Path:
+    """Write the fixed Typst report that reads the generated JSON result."""
+    typst_path = project_root / "report.typ"
+    try:
+        json_reference = json_path.resolve().relative_to(project_root).as_posix()
+    except ValueError as error:
+        raise ValueError(
+            f"JSON must be inside the project directory {project_root}: {json_path}"
+        ) from error
+
+    typst_path.write_text(
+        _typst_template(json_reference, json_path), encoding="utf-8"
+    )
+    return typst_path
+
+
+def _seconds(value: float) -> str:
+    return f"{value:.1f}s"
+
+
+def _typst_template(json_reference: str, json_path: Path) -> str:
+    return f'''#set page(paper: "a4", margin: 18mm)
+#set text(font: "DejaVu Sans", size: 10pt)
+
+#let report = json({json.dumps(json_reference, ensure_ascii=False)})
+#let seconds(value) = str(calc.round(value * 10) / 10) + " s"
+
+= Файл {json_path}
+
+#for row in report.at("dialogue") [
+  #block(
+    width: 100%,
+    inset: 8pt,
+    radius: 4pt,
+    fill: luma(245),
+  )[
+    *[#row.at("speaker_id")]* \\
+    #seconds(row.at("start")) — #seconds(row.at("end"))
+
+    #row.at("text")
+
+    _Термины:_ #if row.at("terms").len() > 0 [
+      #row.at("terms").join(", ")
+    ] else [—]
+  ]
+
+  #v(8pt)
+]
+
+= Метрики качества
+
+#let quality = report.at("quality")
+#if quality.at("available") [
+  - ASR WER: #(quality.at("asr").at("wer") * 100)%
+  - ASR CER: #(quality.at("asr").at("cer") * 100)%
+
+  #if "diarization" in quality [
+    - DER: #(quality.at("diarization").at("der") * 100)%
+  ]
+
+  #if "terminology" in quality [
+    - Терминология — Precision: #(quality.at("terminology").at("precision") * 100)%
+    - Терминология — Recall: #(quality.at("terminology").at("recall") * 100)%
+    - Терминология — F1: #(quality.at("terminology").at("f1") * 100)%
+  ]
+] else [
+  Метрики недоступны: #quality.at("reason")
+]
+
+= Производительность
+
+#let runtime = report.at("runtime")
+- Длительность аудио: #seconds(runtime.at("audio_seconds"))
+- Полное время: #seconds(runtime.at("total_seconds"))
+- RTF: #runtime.at("realtime_factor")
+- Формат: #runtime.at("canonical_audio").at("sample_rate") Hz,
+  mono, #runtime.at("canonical_audio").at("subtype")
+'''

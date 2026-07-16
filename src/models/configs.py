@@ -98,11 +98,11 @@ class NemoDiarizationConfig:
 
 @dataclass(frozen=True, slots=True)
 class SileroConfig:
-    model_path: str | Path
-    window_size: int
-    device: str
-    sample_rate: int
-    speech_threshold: float
-    silence_threshold: float
-    min_speech_duration_ms: int
-    min_silence_duration_ms: int
+    """Parameters used by the Silero VAD adapter."""
+
+    device: str = "cpu"
+    sample_rate: int = 16_000
+    speech_threshold: float = 0.7
+    silence_threshold: float = 0.35
+    min_speech_duration_ms: int = 100
+    min_silence_duration_ms: int = 500

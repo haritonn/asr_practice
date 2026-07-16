@@ -1,4 +1,3 @@
-import gc
 from pathlib import Path
 from typing import List
 
@@ -10,21 +9,22 @@ from ..models.asr import Segment, TranscribeResult, Word
 from ..models.configs import WhisperConfig
 from ..models.vad import SpeechSegment
 from .base import BaseAsr
+from src.runtime.resources import release_accelerator_memory
 
 
 class WhisperAsr(BaseAsr):
     def __init__(self, config: WhisperConfig):
         self.config = config
-        self._init_model()
+        self._model = None
 
-    def _init_model(self):
-        self._model = WhisperModel(**self.config.model_kwargs())
+    def _ensure_loaded(self) -> None:
+        if self._model is None:
+            self._model = WhisperModel(**self.config.model_kwargs())
 
     def transcribe(
         self, audio: Path, speech_segments: List[SpeechSegment]
     ) -> TranscribeResult:
-        if self._model is None:
-            raise RuntimeError("Model has been unloaded before")
+        self._ensure_loaded()
 
         if not speech_segments:
             return TranscribeResult(
@@ -91,5 +91,7 @@ class WhisperAsr(BaseAsr):
         )
 
     def unload(self) -> None:
+        if self._model is None:
+            return
         self._model = None
-        gc.collect()
+        release_accelerator_memory()

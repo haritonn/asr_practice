@@ -9,3 +9,7 @@ class BaseDiarizer(ABC):
     def diarize(self, audio_path: Path) -> DiarizationResult:
         """Return anonymous speaker turns for one audio file."""
         raise NotImplementedError
+
+    def unload(self) -> None:
+        """Release model resources after diarization."""
+        return None

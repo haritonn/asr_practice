@@ -3,19 +3,25 @@ from typing import List
 
 import librosa
 import numpy as np
-from silero_vad import get_speech_timestamps, load_silero_vad, read_audio
+from silero_vad import get_speech_timestamps, load_silero_vad
 
 from ..models.configs import SileroConfig
 from ..models.vad import SpeechSegment
 from .base import BaseVoiceDetection
+from src.runtime.resources import release_accelerator_memory
 
 
 class SileroVoiceDetection(BaseVoiceDetection):
     def __init__(self, conf: SileroConfig):
         self.config = conf
-        self._model = load_silero_vad()
+        self._model = None
+
+    def _ensure_loaded(self) -> None:
+        if self._model is None:
+            self._model = load_silero_vad()
 
     def detect(self, audio: Path) -> List[SpeechSegment]:
+        self._ensure_loaded()
         wav = self._load_audio(audio)
 
         timestamps = get_speech_timestamps(
@@ -36,5 +42,6 @@ class SileroVoiceDetection(BaseVoiceDetection):
         audio, _ = librosa.load(audio, sr=self.config.sample_rate, mono=True)
         return audio.astype(np.float32)
 
-    def unload(self):
+    def unload(self) -> None:
         self._model = None
+        release_accelerator_memory()

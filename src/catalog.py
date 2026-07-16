@@ -29,10 +29,6 @@ class ProductCatalog:
         with path.open(encoding="utf-8") as source:
             data = json.load(source)
 
-        for include in data.get("includes", []):
-            with (path.parent / include).open(encoding="utf-8") as source:
-                data["products"].extend(json.load(source)["products"])
-
         products = {}
         canonical_names = set()
         for item in data["products"]:

@@ -13,9 +13,10 @@ wheels/
 data/
 models/
 .ipynb_checkpoints/
-resources/
 artifacts/
 reports/
+resources/
 scripts/
 src/sample.reference.json
 src/sample.wav
+*.typ

@@ -15,14 +15,14 @@ class BaseAsr(ABC):
         raise NotImplementedError
 
     def unload(self) -> None:
-        """Optional method for clearning space after model usage"""
-        pass
+        """Release resources when an adapter owns them."""
+        return None
 
     def __enter__(self):
-        """Optional method for 'with' context"""
+        """Return this adapter as a context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Unloading on exiting 'with' context"""
+        """Unload the adapter when leaving the context."""
         self.unload()
         return False

@@ -7,28 +7,31 @@ speaker attribution valid while making the timestamp granularity explicit.
 
 from __future__ import annotations
 
-import gc
 import importlib
 from pathlib import Path
 from typing import Sequence
 
 import soundfile as sf
+import torch
+from torch.utils.data import DataLoader
+from transformers import AutoModel
 
 from ..models.asr import Segment, TranscribeResult
 from ..models.configs import GigaAmConfig
 from ..models.vad import SpeechSegment
 from .base import BaseAsr
+from src.runtime.resources import release_accelerator_memory
 
 
 class GigaAmAsr(BaseAsr):
     def __init__(self, config: GigaAmConfig):
         self.config = config
-        self._init_model()
+        self._model = None
 
-    def _init_model(self) -> None:
+    def _ensure_loaded(self) -> None:
+        if self._model is not None:
+            return
         try:
-            from transformers import AutoModel
-
             self._model = AutoModel.from_pretrained(
                 self.config.model_id,
                 revision=self.config.revision,
@@ -44,13 +47,9 @@ class GigaAmAsr(BaseAsr):
     def transcribe(
         self, audio: Path, speech_segments: Sequence[SpeechSegment]
     ) -> TranscribeResult:
-        if self._model is None:
-            raise RuntimeError("Model has been unloaded")
+        self._ensure_loaded()
         if not speech_segments:
             return TranscribeResult(text="", segments=[], language="ru")
-
-        import torch
-        from torch.utils.data import DataLoader
 
         waveform, sample_rate = sf.read(audio, dtype="float32")
         if waveform.ndim == 2:
@@ -98,4 +97,4 @@ class GigaAmAsr(BaseAsr):
 
     def unload(self) -> None:
         self._model = None
-        gc.collect()
+        release_accelerator_memory()
