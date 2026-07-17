@@ -38,6 +38,7 @@ def run_preflight(
     *,
     output_path: Path,
     asr_device: str,
+    vad_device: str,
     terminology_device: str,
     diarization_device: str,
     terminology_catalog: Path,
@@ -91,6 +92,7 @@ def run_preflight(
     requested_cuda_stages = {
         name: device
         for name, device in {
+            "vad": vad_device,
             "asr": asr_device,
             "terminology": terminology_device,
             "diarization": diarization_device,
@@ -128,7 +130,7 @@ def run_preflight(
             "encoding": "PCM_16 WAV",
         },
         "devices": {
-            "vad": asr_device,
+            "vad": vad_device,
             "asr": asr_device,
             "diarization": diarization_device,
             "terminology": terminology_device,

@@ -8,22 +8,58 @@ from pathlib import Path
 from src.models.diarization import DiarizedTranscript
 
 
-def dialogue_rows(result: DiarizedTranscript) -> list[dict]:
+# This is a decoder ranking score, not a probability.  The default comes from
+# the dev-split calibration targeting at least 95% precision.
+DEFAULT_CONFIRMED_SCORE_THRESHOLD = 121.53621653914357
+
+
+def terminology_status(
+    score: float, confirmed_score_threshold: float = DEFAULT_CONFIRMED_SCORE_THRESHOLD
+) -> str:
+    """Classify a detected term for the reviewer-facing report."""
+    if score < confirmed_score_threshold:
+        return "review"
+    return "confirmed"
+
+
+def dialogue_rows(
+    result: DiarizedTranscript, confirmed_score_threshold: float | None = None
+) -> list[dict]:
     """Combine speaker-attributed ASR segments and terminology into dialogue rows."""
     rows = []
     for segment in result.segments:
-        terms = [
-            mention.canonical_name
+        mentions = [
+            mention
             for mention in result.product_mentions
             if min(segment.end, mention.end) > max(segment.start, mention.start)
         ]
+        terms = list(dict.fromkeys(mention.canonical_name for mention in mentions))
+        term_details = []
+        seen_term_ids = set()
+        for mention in mentions:
+            if mention.product_id in seen_term_ids:
+                continue
+            seen_term_ids.add(mention.product_id)
+            term_details.append(
+                {
+                    "name": mention.canonical_name,
+                    "score": mention.score,
+                    "status": terminology_status(
+                        mention.score,
+                        confirmed_score_threshold
+                        if confirmed_score_threshold is not None
+                        else DEFAULT_CONFIRMED_SCORE_THRESHOLD,
+                    ),
+                }
+            )
         rows.append(
             {
                 "speaker_id": segment.speaker_id,
                 "start": segment.start,
                 "end": segment.end,
                 "text": segment.text,
-                "terms": list(dict.fromkeys(terms)),
+                "terms": terms,
+                "term_details": term_details,
             }
         )
     return rows
@@ -100,7 +136,12 @@ def format_runtime_metrics(runtime: dict) -> str:
     )
 
 
-def write_typst_document(project_root: Path, json_path: Path) -> Path:
+def write_typst_document(
+    project_root: Path,
+    json_path: Path,
+    confirmed_color: str = "#1b7f3a",
+    review_color: str = "#a96800",
+) -> Path:
     """Write the fixed Typst report that reads the generated JSON result."""
     typst_path = project_root / "report.typ"
     try:
@@ -111,7 +152,8 @@ def write_typst_document(project_root: Path, json_path: Path) -> Path:
         ) from error
 
     typst_path.write_text(
-        _typst_template(json_reference, json_path), encoding="utf-8"
+        _typst_template(json_reference, json_path, confirmed_color, review_color),
+        encoding="utf-8",
     )
     return typst_path
 
@@ -120,12 +162,24 @@ def _seconds(value: float) -> str:
     return f"{value:.1f}s"
 
 
-def _typst_template(json_reference: str, json_path: Path) -> str:
+def _typst_template(
+    json_reference: str,
+    json_path: Path,
+    confirmed_color: str,
+    review_color: str,
+) -> str:
     return f'''#set page(paper: "a4", margin: 18mm)
 #set text(font: "DejaVu Sans", size: 10pt)
 
 #let report = json({json.dumps(json_reference, ensure_ascii=False)})
 #let seconds(value) = str(calc.round(value * 10) / 10) + " s"
+#let term_label(term) = {{
+  if term.at("status") == "confirmed" {{
+    text(fill: rgb({json.dumps(confirmed_color)}))[#term.at("name")]
+  }} else {{
+    text(fill: rgb({json.dumps(review_color)}))[#term.at("name") + " (проверить)"]
+  }}
+}}
 
 = Файл {json_path}
 
@@ -141,8 +195,11 @@ def _typst_template(json_reference: str, json_path: Path) -> str:
 
     #row.at("text")
 
-    _Термины:_ #if row.at("terms").len() > 0 [
-      #row.at("terms").join(", ")
+    _Термины:_ #if row.at("term_details").len() > 0 [
+      #for (index, term) in row.at("term_details").enumerate() {{
+        if index > 0 [, ]
+        term_label(term)
+      }}
     ] else [—]
   ]
 

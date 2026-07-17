@@ -59,6 +59,11 @@ class DiarizedSpeechPipeline:
         self.vad = vad
         self.diarizer = diarizer
         self.terminology = terminology
+        self.terminology_confirmation_threshold = (
+            terminology.config.confirmed_score_threshold
+            if terminology is not None
+            else None
+        )
         self.last_runtime: PipelineRuntime | None = None
 
     def transcribe(self, audio_path: Path) -> DiarizedTranscript:

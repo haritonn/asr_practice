@@ -52,6 +52,9 @@ class TerminologyConfig:
     context_weight: float = 12.0
     keyword_threshold: float = -12.0
     ctc_alignment_weight: float = 0.0
+    # Calibrated on the synthetic dev split for 95% precision.  This controls
+    # reviewer-facing colouring only; keyword_threshold still controls recall.
+    confirmed_score_threshold: float = 121.53621653914357
 
 
 @dataclass(frozen=True, slots=True)

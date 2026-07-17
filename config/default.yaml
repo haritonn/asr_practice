@@ -1,0 +1,33 @@
+asr:
+  model_size_or_path: medium
+  device: auto
+  compute_type: int8
+  beam_size: 1
+  language: ru
+  word_timestamps: true
+
+vad:
+  device: auto
+  sample_rate: 16000
+  speech_threshold: 0.7
+  silence_threshold: 0.35
+  min_speech_duration_ms: 100
+  min_silence_duration_ms: 500
+
+diarization:
+  model_id: pyannote/speaker-diarization-community-1
+  device: cpu
+  output: exclusive
+
+terminology:
+  catalog_path: resources/fire_catalog.json
+  model_path: models/stt_ru_conformer_ctc_large.nemo
+  device: auto
+  context_weight: 12.0
+  keyword_threshold: -12.0
+  ctc_alignment_weight: 0.0
+  confirmed_score_threshold: 121.53621653914357
+
+report:
+  confirmed_color: "#1b7f3a"
+  review_color: "#a96800"
