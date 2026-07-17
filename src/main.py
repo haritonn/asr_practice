@@ -130,6 +130,7 @@ def main() -> None:
     dialogue = dialogue_rows(
         result,
         confirmed_score_threshold=pipeline.terminology_confirmation_threshold,
+        merge_same_speaker_gap_seconds=config.report.merge_same_speaker_gap_seconds,
     )
     quality = quality_metrics(result, args.audio.with_suffix(".reference.json"))
     runtime_data = runtime.to_dict()

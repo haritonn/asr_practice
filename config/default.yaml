@@ -32,3 +32,6 @@ terminology:
 report:
   confirmed_color: "#1b7f3a"
   review_color: "#a96800"
+  # Merge adjacent utterances of the same speaker when VAD split them by a
+  # pause no longer than this value. Set to 0 to merge only touching segments.
+  merge_same_speaker_gap_seconds: 1.0

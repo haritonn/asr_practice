@@ -23,9 +23,13 @@ def terminology_status(
 
 
 def dialogue_rows(
-    result: DiarizedTranscript, confirmed_score_threshold: float | None = None
+    result: DiarizedTranscript,
+    confirmed_score_threshold: float | None = None,
+    merge_same_speaker_gap_seconds: float = 0.0,
 ) -> list[dict]:
-    """Combine speaker-attributed ASR segments and terminology into dialogue rows."""
+    """Combine ASR segments into speaker-attributed, reviewer-facing dialogue rows."""
+    if merge_same_speaker_gap_seconds < 0:
+        raise ValueError("merge_same_speaker_gap_seconds must be non-negative.")
     rows = []
     for segment in result.segments:
         mentions = [
@@ -62,7 +66,41 @@ def dialogue_rows(
                 "term_details": term_details,
             }
         )
-    return rows
+    return _merge_adjacent_speaker_rows(rows, merge_same_speaker_gap_seconds)
+
+
+def _merge_adjacent_speaker_rows(rows: list[dict], max_gap_seconds: float) -> list[dict]:
+    """Merge consecutive rows from one speaker separated by a short VAD pause."""
+    merged: list[dict] = []
+    for row in rows:
+        if (
+            merged
+            and row["speaker_id"] == merged[-1]["speaker_id"]
+            and row["start"] - merged[-1]["end"] <= max_gap_seconds
+        ):
+            previous = merged[-1]
+            previous["end"] = row["end"]
+            previous["text"] = " ".join((previous["text"], row["text"])).strip()
+            _merge_row_terms(previous, row)
+        else:
+            merged.append(
+                {
+                    **row,
+                    "terms": list(row["terms"]),
+                    "term_details": list(row["term_details"]),
+                }
+            )
+    return merged
+
+
+def _merge_row_terms(previous: dict, row: dict) -> None:
+    """Keep term labels and details unique after joining dialogue rows."""
+    previous["terms"] = list(dict.fromkeys((*previous["terms"], *row["terms"])))
+    existing_names = {detail["name"] for detail in previous["term_details"]}
+    for detail in row["term_details"]:
+        if detail["name"] not in existing_names:
+            previous["term_details"].append(detail)
+            existing_names.add(detail["name"])
 
 
 def format_dialogue(rows: list[dict]) -> str:

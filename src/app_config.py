@@ -20,6 +20,7 @@ from src.models.configs import (
 class ReportConfig:
     confirmed_color: str
     review_color: str
+    merge_same_speaker_gap_seconds: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +46,7 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
     diarization = _section(loaded, "diarization")
     terminology = _section(loaded, "terminology")
     report = _section(loaded, "report")
+    report.setdefault("merge_same_speaker_gap_seconds", 1.0)
     _reject_unknown(
         asr,
         {"model_size_or_path", "device", "compute_type", "beam_size", "language", "word_timestamps"},
@@ -65,7 +67,11 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
         {"catalog_path", "model_path", "device", "context_weight", "keyword_threshold", "ctc_alignment_weight", "confirmed_score_threshold"},
         "terminology",
     )
-    _reject_unknown(report, {"confirmed_color", "review_color"}, "report")
+    _reject_unknown(
+        report,
+        {"confirmed_color", "review_color", "merge_same_speaker_gap_seconds"},
+        "report",
+    )
 
     _validate_device(asr.get("device"), "asr.device")
     if vad.get("device") != "cpu":
@@ -76,6 +82,11 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
         value = report.get(key)
         if not isinstance(value, str) or not _is_hex_color(value):
             raise ValueError(f"report.{key} must be a #RRGGBB colour.")
+    gap = report.get("merge_same_speaker_gap_seconds")
+    if not isinstance(gap, (int, float)) or isinstance(gap, bool) or gap < 0:
+        raise ValueError(
+            "report.merge_same_speaker_gap_seconds must be a non-negative number."
+        )
 
     return AppConfig(
         asr=WhisperConfig(**asr),
