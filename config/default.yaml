@@ -7,7 +7,8 @@ asr:
   word_timestamps: true
 
 vad:
-  device: auto
+  # Silero VAD adapter currently runs on CPU.
+  device: cpu
   sample_rate: 16000
   speech_threshold: 0.7
   silence_threshold: 0.35

@@ -38,7 +38,7 @@ class PyannoteCommunityDiarizer(BaseDiarizer):
         access_token = token or os.environ.get("HF_TOKEN")
         if not access_token:
             raise RuntimeError(
-                "Set HF_TOKEN or pass --hf-token after accepting model terms."
+                "Set HF_TOKEN after accepting the model terms."
             )
         self._token = access_token
         self._pipeline = None

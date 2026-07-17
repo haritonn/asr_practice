@@ -29,6 +29,7 @@ class SileroVoiceDetection(BaseVoiceDetection):
             self._model,
             sampling_rate=self.config.sample_rate,
             threshold=self.config.speech_threshold,
+            neg_threshold=self.config.silence_threshold,
             min_speech_duration_ms=self.config.min_speech_duration_ms,
             min_silence_duration_ms=self.config.min_silence_duration_ms,
             return_seconds=True,

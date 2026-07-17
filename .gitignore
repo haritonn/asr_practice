@@ -17,6 +17,13 @@ artifacts/
 reports/
 resources/
 scripts/
+!scripts/
+scripts/*
+!scripts/__init__.py
+!scripts/evaluate_benchmark.py
+!scripts/evaluate_e2e.py
+!scripts/calibrate_terminology_confidence.py
 src/sample.reference.json
 src/sample.wav
 *.typ
+scripts/

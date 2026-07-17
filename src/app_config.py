@@ -68,7 +68,8 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
     _reject_unknown(report, {"confirmed_color", "review_color"}, "report")
 
     _validate_device(asr.get("device"), "asr.device")
-    _validate_device(vad.get("device"), "vad.device")
+    if vad.get("device") != "cpu":
+        raise ValueError("vad.device must be cpu: the current Silero adapter is CPU-only.")
     _validate_device(diarization.get("device"), "diarization.device")
     _validate_device(terminology.get("device"), "terminology.device")
     for key in ("confirmed_color", "review_color"):

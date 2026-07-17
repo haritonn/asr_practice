@@ -82,7 +82,7 @@ def main() -> None:
     parser.add_argument(
         "--device",
         choices=("auto", "cpu", "cuda"),
-        help="Переопределяет устройства ASR, VAD и терминологии из YAML",
+        help="Переопределяет устройства ASR и терминологии из YAML",
     )
     parser.add_argument(
         "--num-speakers", type=int, help="Точное число спикеров, если оно известно"
@@ -94,7 +94,7 @@ def main() -> None:
 
     config = load_app_config(args.config, ROOT)
     asr_device = _resolve_device(args.device or config.asr.device)
-    vad_device = _resolve_device(args.device or config.vad.device)
+    vad_device = config.vad.device
     terminology_device = _resolve_device(args.device or config.terminology.device)
     diarization_device = _resolve_device(config.diarization.device)
     output = args.output or args.audio.with_suffix(".diarized.json")
@@ -107,6 +107,7 @@ def main() -> None:
         diarization_device=diarization_device,
         terminology_catalog=config.terminology.catalog_path,
         terminology_model=config.terminology.model_path,
+        pyannote_model_id=config.diarization.model_id,
     )
     print(format_preflight(preflight))
     if not preflight.passed:
