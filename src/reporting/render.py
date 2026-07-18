@@ -1,11 +1,4 @@
-"""Console and Typst renderers for a diarized transcript."""
-
-from __future__ import annotations
-
 import json
-from pathlib import Path
-
-from src.models.diarization import DiarizedTranscript
 
 
 # This is a decoder ranking score, not a probability.  The default comes from
@@ -14,8 +7,8 @@ DEFAULT_CONFIRMED_SCORE_THRESHOLD = 121.53621653914357
 
 
 def terminology_status(
-    score: float, confirmed_score_threshold: float = DEFAULT_CONFIRMED_SCORE_THRESHOLD
-) -> str:
+    score, confirmed_score_threshold=DEFAULT_CONFIRMED_SCORE_THRESHOLD
+):
     """Classify a detected term for the reviewer-facing report."""
     if score < confirmed_score_threshold:
         return "review"
@@ -23,10 +16,8 @@ def terminology_status(
 
 
 def dialogue_rows(
-    result: DiarizedTranscript,
-    confirmed_score_threshold: float | None = None,
-    merge_same_speaker_gap_seconds: float = 0.0,
-) -> list[dict]:
+    result, confirmed_score_threshold=None, merge_same_speaker_gap_seconds=0.0
+):
     """Combine ASR segments into speaker-attributed, reviewer-facing dialogue rows."""
     if merge_same_speaker_gap_seconds < 0:
         raise ValueError("merge_same_speaker_gap_seconds must be non-negative.")
@@ -69,9 +60,9 @@ def dialogue_rows(
     return _merge_adjacent_speaker_rows(rows, merge_same_speaker_gap_seconds)
 
 
-def _merge_adjacent_speaker_rows(rows: list[dict], max_gap_seconds: float) -> list[dict]:
+def _merge_adjacent_speaker_rows(rows, max_gap_seconds):
     """Merge consecutive rows from one speaker separated by a short VAD pause."""
-    merged: list[dict] = []
+    merged = []
     for row in rows:
         if (
             merged
@@ -93,7 +84,7 @@ def _merge_adjacent_speaker_rows(rows: list[dict], max_gap_seconds: float) -> li
     return merged
 
 
-def _merge_row_terms(previous: dict, row: dict) -> None:
+def _merge_row_terms(previous, row):
     """Keep term labels and details unique after joining dialogue rows."""
     previous["terms"] = list(dict.fromkeys((*previous["terms"], *row["terms"])))
     existing_names = {detail["name"] for detail in previous["term_details"]}
@@ -103,7 +94,7 @@ def _merge_row_terms(previous: dict, row: dict) -> None:
             existing_names.add(detail["name"])
 
 
-def format_dialogue(rows: list[dict]) -> str:
+def format_dialogue(rows):
     """Render dialogue rows in the compact format intended for people."""
     lines = []
     previous_speaker = None
@@ -122,7 +113,7 @@ def format_dialogue(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def format_quality_metrics(metrics: dict) -> str:
+def format_quality_metrics(metrics):
     """Render available quality metrics for the console."""
     if not metrics["available"]:
         return f"Quality metrics: unavailable ({metrics['reason']})"
@@ -150,7 +141,7 @@ def format_quality_metrics(metrics: dict) -> str:
     return "\n".join(lines)
 
 
-def format_runtime_metrics(runtime: dict) -> str:
+def format_runtime_metrics(runtime):
     """Render stage timings and runtime configuration for the console."""
     stage_lines = [
         f"{name}: {seconds:.1f}s" for name, seconds in runtime["stages"].items()
@@ -175,11 +166,8 @@ def format_runtime_metrics(runtime: dict) -> str:
 
 
 def write_typst_document(
-    project_root: Path,
-    json_path: Path,
-    confirmed_color: str = "#1b7f3a",
-    review_color: str = "#a96800",
-) -> Path:
+    project_root, json_path, confirmed_color="#1b7f3a", review_color="#a96800"
+):
     """Write the fixed Typst report that reads the generated JSON result."""
     typst_path = project_root / "report.typ"
     try:
@@ -196,17 +184,12 @@ def write_typst_document(
     return typst_path
 
 
-def _seconds(value: float) -> str:
+def _seconds(value):
     return f"{value:.1f}s"
 
 
-def _typst_template(
-    json_reference: str,
-    json_path: Path,
-    confirmed_color: str,
-    review_color: str,
-) -> str:
-    return f'''#set page(paper: "a4", margin: 18mm)
+def _typst_template(json_reference, json_path, confirmed_color, review_color):
+    return f"""#set page(paper: "a4", margin: 18mm)
 #set text(font: "DejaVu Sans", size: 10pt)
 
 #let report = json({json.dumps(json_reference, ensure_ascii=False)})
@@ -272,4 +255,4 @@ def _typst_template(
 - RTF: #runtime.at("realtime_factor")
 - Формат: #runtime.at("canonical_audio").at("sample_rate") Hz,
   mono, #runtime.at("canonical_audio").at("subtype")
-'''
+"""

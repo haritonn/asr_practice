@@ -1,19 +1,13 @@
-"""Quality metrics for one diarized transcript and its optional reference."""
-
-from __future__ import annotations
-
 import json
-from pathlib import Path
 
 import jiwer
 from pyannote.core import Annotation, Segment
 from pyannote.metrics.diarization import DiarizationErrorRate
 
 from src.metrics import normalize_text
-from src.models.diarization import DiarizedTranscript
 
 
-def quality_metrics(result: DiarizedTranscript, reference_path: Path) -> dict:
+def quality_metrics(result, reference_path):
     """Evaluate a result when a sidecar reference is available for the audio."""
     if not reference_path.is_file():
         return {
@@ -60,7 +54,7 @@ def quality_metrics(result: DiarizedTranscript, reference_path: Path) -> dict:
     return metrics
 
 
-def _diarization_metrics(result: DiarizedTranscript, reference_turns: list[dict]) -> dict:
+def _diarization_metrics(result, reference_turns):
     reference_annotation = Annotation(uri="reference")
     hypothesis_annotation = Annotation(uri="hypothesis")
     for turn in reference_turns:
@@ -76,9 +70,7 @@ def _diarization_metrics(result: DiarizedTranscript, reference_turns: list[dict]
     }
 
 
-def _terminology_metrics(
-    result: DiarizedTranscript, expected_product_ids: list[str]
-) -> dict:
+def _terminology_metrics(result, expected_product_ids):
     expected = set(expected_product_ids)
     predicted = {mention.product_id for mention in result.product_mentions}
     true_positive = len(expected & predicted)

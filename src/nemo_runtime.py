@@ -1,7 +1,3 @@
-"""Small NeMo runtime configuration shared by inference and evaluation."""
-
-from __future__ import annotations
-
 import logging
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from io import StringIO
@@ -9,7 +5,7 @@ from io import StringIO
 from nemo.utils import logging as nemo_logging
 
 
-def silence_nemo_configuration_logs() -> None:
+def silence_nemo_configuration_logs():
     """Keep errors visible while hiding NeMo setup/configuration diagnostics."""
     nemo_logging.setLevel(logging.ERROR)
     for name in (

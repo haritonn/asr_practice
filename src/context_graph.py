@@ -1,18 +1,8 @@
-"""NeMo CTC context graph built from a versioned product catalog.
-
-The graph is an acoustic decoder constraint, not post-ASR string matching.
-"""
-
-from __future__ import annotations
-
 from dataclasses import dataclass
 
-import numpy as np
 from nemo.collections.asr.parts import context_biasing
 
-from .catalog import Product, ProductCatalog
 from .models.asr import ProductMention
-from .models.configs import ContextGraphConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +14,7 @@ class _SpottedItem:
 
 
 class ContextGraphRecognizer:
-    def __init__(self, model, catalog: ProductCatalog, config: ContextGraphConfig):
+    def __init__(self, model, catalog, config):
         self.model = model
         self.catalog = catalog
         self.config = config
@@ -33,9 +23,7 @@ class ContextGraphRecognizer:
         self._graphs = {}
         self._global_product_ids = frozenset(catalog.products)
 
-    def recognize(
-        self, logprobs: np.ndarray, segment_start: float, segment_end: float
-    ) -> list[ProductMention]:
+    def recognize(self, logprobs, segment_start, segment_end):
         return self._mentions_from_hits(
             self._spot(logprobs, self._product_graph(self._global_product_ids)),
             logprobs,
@@ -43,13 +31,7 @@ class ContextGraphRecognizer:
             segment_end,
         )
 
-    def _mentions_from_hits(
-        self,
-        product_hits: list[_SpottedItem],
-        logprobs: np.ndarray,
-        segment_start: float,
-        segment_end: float,
-    ) -> list[ProductMention]:
+    def _mentions_from_hits(self, product_hits, logprobs, segment_start, segment_end):
         frame_seconds = (segment_end - segment_start) / max(logprobs.shape[0], 1)
         best_by_id = {}
         for hit in product_hits:
@@ -75,7 +57,7 @@ class ContextGraphRecognizer:
             )
         return sorted(mentions, key=lambda item: (item.start, -item.score))
 
-    def _product_graph(self, product_ids: frozenset[str]):
+    def _product_graph(self, product_ids):
         graph = self._graphs.get(product_ids)
         if graph is None:
             graph = self._build_graph(
@@ -87,10 +69,10 @@ class ContextGraphRecognizer:
             self._graphs[product_ids] = graph
         return graph
 
-    def _products(self, product_ids: frozenset[str]) -> list[Product]:
+    def _products(self, product_ids):
         return [self.catalog.products[product_id] for product_id in sorted(product_ids)]
 
-    def _build_graph(self, items: list[tuple[str, tuple[str, ...]]]):
+    def _build_graph(self, items):
         graph = self.context_biasing.ContextGraphCTC(blank_id=self.blank_id)
         graph.add_to_graph(
             [
@@ -100,7 +82,7 @@ class ContextGraphRecognizer:
         )
         return graph
 
-    def _spot(self, logprobs: np.ndarray, graph) -> list[_SpottedItem]:
+    def _spot(self, logprobs, graph):
         hypotheses = self.context_biasing.run_word_spotter(
             logprobs,
             graph,

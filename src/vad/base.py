@@ -1,16 +1,12 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import List
-
-from ..models.vad import SpeechSegment
 
 
 class BaseVoiceDetection(ABC):
     @abstractmethod
-    def detect(self, audio: Path) -> List[SpeechSegment]:
+    def detect(self, audio):
         """Required method for getting voice & removing noise"""
         raise NotImplementedError
 
-    def unload(self) -> None:
+    def unload(self):
         """Release resources when an adapter owns them."""
         return None

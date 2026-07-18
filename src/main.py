@@ -1,5 +1,3 @@
-"""Run the end-to-end speaker-attributed speech-to-text pipeline."""
-
 from __future__ import annotations
 
 import argparse
@@ -9,9 +7,9 @@ from pathlib import Path
 
 import torch
 
+from src.app_config import AppConfig, load_app_config
 from src.asr.terminology import CtcTerminologyRecognizer
 from src.asr.whisper import WhisperAsr
-from src.app_config import AppConfig, load_app_config
 from src.diarization.pyannote import PyannoteCommunityDiarizer
 from src.evaluation.quality import quality_metrics
 from src.pipeline import DiarizedSpeechPipeline
@@ -24,7 +22,6 @@ from src.reporting.render import (
 )
 from src.runtime.preflight import format_preflight, run_preflight
 from src.vad.silero_vad import SileroVoiceDetection
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MIN_CUDA_MEMORY_BYTES = 8 * 1024**3
@@ -69,7 +66,7 @@ def _build_pipeline(
     )
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("audio", type=Path, help="Путь к аудиофайлу")
     parser.add_argument(
@@ -95,6 +92,7 @@ def main() -> None:
     config = load_app_config(args.config, ROOT)
     asr_device = _resolve_device(args.device or config.asr.device)
     vad_device = config.vad.device
+
     terminology_device = _resolve_device(args.device or config.terminology.device)
     diarization_device = _resolve_device(config.diarization.device)
     output = args.output or args.audio.with_suffix(".diarized.json")
@@ -122,6 +120,7 @@ def main() -> None:
         diarization_device,
         args.num_speakers,
     )
+
     result = pipeline.transcribe(args.audio)
     runtime = pipeline.last_runtime
     if runtime is None:

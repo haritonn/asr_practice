@@ -1,29 +1,22 @@
-from pathlib import Path
-from typing import List
-
 import numpy as np
 from faster_whisper import WhisperModel
 from pydub import AudioSegment
 
 from ..models.asr import Segment, TranscribeResult, Word
-from ..models.configs import WhisperConfig
-from ..models.vad import SpeechSegment
 from .base import BaseAsr
 from src.runtime.resources import release_accelerator_memory
 
 
 class WhisperAsr(BaseAsr):
-    def __init__(self, config: WhisperConfig):
+    def __init__(self, config):
         self.config = config
         self._model = None
 
-    def _ensure_loaded(self) -> None:
+    def _ensure_loaded(self):
         if self._model is None:
             self._model = WhisperModel(**self.config.model_kwargs())
 
-    def transcribe(
-        self, audio: Path, speech_segments: List[SpeechSegment]
-    ) -> TranscribeResult:
+    def transcribe(self, audio, speech_segments):
         self._ensure_loaded()
 
         if not speech_segments:
@@ -59,9 +52,7 @@ class WhisperAsr(BaseAsr):
             language=detected_language,
         )
 
-    def _slice_audio(
-        self, audio: AudioSegment, speech_segment: SpeechSegment
-    ) -> np.ndarray:
+    def _slice_audio(self, audio, speech_segment):
         start_ms = max(0, int(speech_segment.start * 1000))
         end_ms = max(start_ms, int(speech_segment.end * 1000))
         chunk = audio[start_ms:end_ms].set_channels(1).set_frame_rate(16000)
@@ -71,7 +62,7 @@ class WhisperAsr(BaseAsr):
         samples = samples / max_val
         return samples
 
-    def _convert_segment(self, raw_segment, offset: float = 0.0) -> Segment:
+    def _convert_segment(self, raw_segment, offset=0.0):
         words = []
         if raw_segment.words:
             words = [
@@ -90,7 +81,7 @@ class WhisperAsr(BaseAsr):
             words=words,
         )
 
-    def unload(self) -> None:
+    def unload(self):
         if self._model is None:
             return
         self._model = None

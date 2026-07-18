@@ -1,10 +1,5 @@
-"""Loading and validation of the YAML runtime configuration."""
-
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -32,14 +27,17 @@ class AppConfig:
     report: ReportConfig
 
 
-def load_app_config(path: Path, project_root: Path) -> AppConfig:
+def load_app_config(path, project_root):
     """Load a strict YAML configuration, resolving paths from project root."""
     if not path.is_file():
         raise FileNotFoundError(f"Configuration file is missing: {path}")
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+
     if not isinstance(loaded, dict):
         raise ValueError("Configuration root must be a mapping.")
-    _reject_unknown(loaded, {"asr", "vad", "diarization", "terminology", "report"}, "root")
+    _reject_unknown(
+        loaded, {"asr", "vad", "diarization", "terminology", "report"}, "root"
+    )
 
     asr = _section(loaded, "asr")
     vad = _section(loaded, "vad")
@@ -49,22 +47,51 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
     report.setdefault("merge_same_speaker_gap_seconds", 1.0)
     _reject_unknown(
         asr,
-        {"model_size_or_path", "device", "compute_type", "beam_size", "language", "word_timestamps"},
+        {
+            "model_size_or_path",
+            "device",
+            "compute_type",
+            "beam_size",
+            "language",
+            "word_timestamps",
+        },
         "asr",
     )
     _reject_unknown(
         vad,
-        {"device", "sample_rate", "speech_threshold", "silence_threshold", "min_speech_duration_ms", "min_silence_duration_ms"},
+        {
+            "device",
+            "sample_rate",
+            "speech_threshold",
+            "silence_threshold",
+            "min_speech_duration_ms",
+            "min_silence_duration_ms",
+        },
         "vad",
     )
     _reject_unknown(
         diarization,
-        {"model_id", "device", "num_speakers", "min_speakers", "max_speakers", "output"},
+        {
+            "model_id",
+            "device",
+            "num_speakers",
+            "min_speakers",
+            "max_speakers",
+            "output",
+        },
         "diarization",
     )
     _reject_unknown(
         terminology,
-        {"catalog_path", "model_path", "device", "context_weight", "keyword_threshold", "ctc_alignment_weight", "confirmed_score_threshold"},
+        {
+            "catalog_path",
+            "model_path",
+            "device",
+            "context_weight",
+            "keyword_threshold",
+            "ctc_alignment_weight",
+            "confirmed_score_threshold",
+        },
         "terminology",
     )
     _reject_unknown(
@@ -75,7 +102,9 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
 
     _validate_device(asr.get("device"), "asr.device")
     if vad.get("device") != "cpu":
-        raise ValueError("vad.device must be cpu: the current Silero adapter is CPU-only.")
+        raise ValueError(
+            "vad.device must be cpu: the current Silero adapter is CPU-only."
+        )
     _validate_device(diarization.get("device"), "diarization.device")
     _validate_device(terminology.get("device"), "terminology.device")
     for key in ("confirmed_color", "review_color"):
@@ -95,7 +124,9 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
         terminology=TerminologyConfig(
             **{
                 **terminology,
-                "catalog_path": _project_path(project_root, terminology["catalog_path"]),
+                "catalog_path": _project_path(
+                    project_root, terminology["catalog_path"]
+                ),
                 "model_path": _project_path(project_root, terminology["model_path"]),
             }
         ),
@@ -103,30 +134,32 @@ def load_app_config(path: Path, project_root: Path) -> AppConfig:
     )
 
 
-def _section(document: dict[str, Any], name: str) -> dict[str, Any]:
+def _section(document, name):
     value = document.get(name)
     if not isinstance(value, dict):
         raise ValueError(f"Configuration section '{name}' must be a mapping.")
     return value
 
 
-def _reject_unknown(values: dict[str, Any], allowed: set[str], section: str) -> None:
+def _reject_unknown(values, allowed, section):
     unknown = sorted(set(values) - allowed)
     if unknown:
         raise ValueError(f"Unknown key(s) in {section}: {', '.join(unknown)}")
 
 
-def _validate_device(value: Any, name: str) -> None:
+def _validate_device(value, name):
     if value not in {"auto", "cpu", "cuda"}:
         raise ValueError(f"{name} must be one of: auto, cpu, cuda.")
 
 
-def _is_hex_color(value: str) -> bool:
-    return len(value) == 7 and value.startswith("#") and all(
-        character in "0123456789abcdefABCDEF" for character in value[1:]
+def _is_hex_color(value):
+    return (
+        len(value) == 7
+        and value.startswith("#")
+        and all(character in "0123456789abcdefABCDEF" for character in value[1:])
     )
 
 
-def _project_path(project_root: Path, value: str) -> Path:
+def _project_path(project_root, value):
     path = Path(value)
     return path if path.is_absolute() else project_root / path

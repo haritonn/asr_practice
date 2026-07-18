@@ -1,20 +1,11 @@
-"""Attach timestamped ASR segments to anonymous speaker turns."""
-
-from __future__ import annotations
-
 from collections import defaultdict
-from typing import Sequence
 
 from src.models.diarization import (
     DiarizedTranscriptSegment,
-    SpeakerTurn,
-    TimedTranscriptSegment,
 )
 
 
-def assign_speakers(
-    segments: Sequence[TimedTranscriptSegment], turns: Sequence[SpeakerTurn]
-) -> list[DiarizedTranscriptSegment]:
+def assign_speakers(segments, turns):
     """Assign every ASR segment to the speaker with greatest time overlap."""
     result = []
     for segment in segments:
@@ -29,11 +20,9 @@ def assign_speakers(
     return result
 
 
-def speaker_for_interval(
-    start: float, end: float, turns: Sequence[SpeakerTurn]
-) -> str | None:
+def speaker_for_interval(start, end, turns):
     """Return the speaker with the greatest overlap for a time interval."""
-    overlap_by_speaker: dict[str, float] = defaultdict(float)
+    overlap_by_speaker = defaultdict(float)
     for turn in turns:
         overlap = max(0.0, min(end, turn.end) - max(start, turn.start))
         if overlap > 0:

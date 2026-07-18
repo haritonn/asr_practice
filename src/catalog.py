@@ -1,10 +1,5 @@
-"""Versioned catalog of products and their spoken forms for a CTC graph."""
-
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass
-from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,7 +10,7 @@ class Product:
     ctc_forms: tuple[str, ...]
 
     @property
-    def graph_forms(self) -> tuple[str, ...]:
+    def graph_forms(self):
         return tuple(dict.fromkeys((*self.spoken_forms, *self.ctc_forms)))
 
 
@@ -25,7 +20,7 @@ class ProductCatalog:
     products: dict[str, Product]
 
     @classmethod
-    def load(cls, path: Path) -> "ProductCatalog":
+    def load(cls, path):
         with path.open(encoding="utf-8") as source:
             data = json.load(source)
 

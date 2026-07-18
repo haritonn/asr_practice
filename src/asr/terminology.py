@@ -1,10 +1,5 @@
-"""CTC context-graph terminology recognition for arbitrary audio."""
-
-from __future__ import annotations
-
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Sequence
 
 import nemo.collections.asr as nemo_asr
 import numpy as np
@@ -13,9 +8,7 @@ from pydub import AudioSegment
 
 from src.catalog import ProductCatalog
 from src.context_graph import ContextGraphRecognizer
-from src.models.asr import ProductMention
-from src.models.configs import ContextGraphConfig, TerminologyConfig
-from src.models.vad import SpeechSegment
+from src.models.configs import ContextGraphConfig
 from src.nemo_runtime import quiet_nemo_transcribe, silence_nemo_configuration_logs
 from src.runtime.resources import release_accelerator_memory
 
@@ -23,12 +16,12 @@ from src.runtime.resources import release_accelerator_memory
 class CtcTerminologyRecognizer:
     """Detect catalog terms acoustically without ASR fine-tuning."""
 
-    def __init__(self, config: TerminologyConfig):
+    def __init__(self, config):
         self.config = config
         self._model = None
         self._recognizer = None
 
-    def _ensure_loaded(self) -> None:
+    def _ensure_loaded(self):
         if self._model is not None:
             return
         if not self.config.catalog_path.is_file():
@@ -49,11 +42,7 @@ class CtcTerminologyRecognizer:
             ),
         )
 
-    def recognize(
-        self,
-        audio_path: Path,
-        speech_segments: Sequence[SpeechSegment] | None = None,
-    ) -> list[ProductMention]:
+    def recognize(self, audio_path, speech_segments=None):
         """Spot terms per VAD segment, preserving offsets in the source audio."""
         self._ensure_loaded()
         if speech_segments is None:
@@ -62,7 +51,7 @@ class CtcTerminologyRecognizer:
             )
 
         audio = AudioSegment.from_file(audio_path)
-        mentions: list[ProductMention] = []
+        mentions = []
         with TemporaryDirectory(prefix="terminology_segments_") as temporary_directory:
             for index, segment in enumerate(speech_segments):
                 start_ms = max(0, round(segment.start * 1_000))
@@ -76,9 +65,7 @@ class CtcTerminologyRecognizer:
                 )
         return mentions
 
-    def _recognize_file(
-        self, audio_path: Path, segment_start: float, segment_end: float
-    ) -> list[ProductMention]:
+    def _recognize_file(self, audio_path, segment_start, segment_end):
         with quiet_nemo_transcribe():
             hypothesis = self._model.transcribe(
                 [str(audio_path)], batch_size=1, return_hypotheses=True, verbose=False
@@ -90,7 +77,7 @@ class CtcTerminologyRecognizer:
             np.asarray(alignment), segment_start, segment_end
         )
 
-    def unload(self) -> None:
+    def unload(self):
         self._model = None
         self._recognizer = None
         release_accelerator_memory()

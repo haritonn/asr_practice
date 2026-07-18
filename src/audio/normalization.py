@@ -1,7 +1,3 @@
-"""Canonical audio preparation shared by all inference stages."""
-
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,7 +18,7 @@ class CanonicalAudio:
     channels: int
     subtype: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "path": str(self.path),
             "duration_seconds": round(self.duration_seconds, 3),
@@ -32,7 +28,7 @@ class CanonicalAudio:
         }
 
 
-def normalize_audio(source_path: Path, destination_path: Path) -> CanonicalAudio:
+def normalize_audio(source_path, destination_path):
     """Convert input audio to mono 16 kHz signed-16-bit PCM WAV."""
     if not source_path.is_file():
         raise FileNotFoundError(source_path)

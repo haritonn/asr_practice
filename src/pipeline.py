@@ -1,22 +1,16 @@
-from __future__ import annotations
-
 import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from src.asr.base import BaseAsr
-from src.asr.terminology import CtcTerminologyRecognizer
 from src.audio.normalization import CanonicalAudio, normalize_audio
-from src.diarization.base import BaseDiarizer
 from src.diarization.transcript import assign_speakers, speaker_for_interval
 from src.models.diarization import (
     DiarizedTranscript,
     SpeakerAttributedProductMention,
     TimedTranscriptSegment,
 )
-from src.vad.base import BaseVoiceDetection
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,14 +22,16 @@ class PipelineRuntime:
     stages: dict[str, float]
     canonical_audio: CanonicalAudio
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "audio_seconds": round(self.audio_seconds, 3),
             "total_seconds": round(self.total_seconds, 3),
             "realtime_factor": round(
                 self.total_seconds / max(self.audio_seconds, 1e-9), 3
             ),
-            "stages": {name: round(seconds, 3) for name, seconds in self.stages.items()},
+            "stages": {
+                name: round(seconds, 3) for name, seconds in self.stages.items()
+            },
             "canonical_audio": {
                 "duration_seconds": round(self.canonical_audio.duration_seconds, 3),
                 "sample_rate": self.canonical_audio.sample_rate,
@@ -48,13 +44,7 @@ class PipelineRuntime:
 class DiarizedSpeechPipeline:
     """Run VAD, ASR and diarization and produce one speaker-attributed transcript."""
 
-    def __init__(
-        self,
-        asr: BaseAsr,
-        vad: BaseVoiceDetection,
-        diarizer: BaseDiarizer,
-        terminology: CtcTerminologyRecognizer | None = None,
-    ):
+    def __init__(self, asr, vad, diarizer, terminology=None):
         self.asr = asr
         self.vad = vad
         self.diarizer = diarizer
@@ -64,11 +54,11 @@ class DiarizedSpeechPipeline:
             if terminology is not None
             else None
         )
-        self.last_runtime: PipelineRuntime | None = None
+        self.last_runtime = None
 
-    def transcribe(self, audio_path: Path) -> DiarizedTranscript:
+    def transcribe(self, audio_path):
         started_at = time.perf_counter()
-        stage_seconds: dict[str, float] = {}
+        stage_seconds = {}
         stage_started_at = time.perf_counter()
         with TemporaryDirectory(prefix="asr_canonical_") as temporary_directory:
             canonical_audio = normalize_audio(
@@ -85,7 +75,9 @@ class DiarizedSpeechPipeline:
 
             stage_started_at = time.perf_counter()
             try:
-                transcription = self.asr.transcribe(canonical_audio.path, speech_segments)
+                transcription = self.asr.transcribe(
+                    canonical_audio.path, speech_segments
+                )
             finally:
                 self.asr.unload()
                 stage_seconds["asr"] = time.perf_counter() - stage_started_at
@@ -118,7 +110,9 @@ class DiarizedSpeechPipeline:
                     ]
                 finally:
                     self.terminology.unload()
-                    stage_seconds["terminology"] = time.perf_counter() - stage_started_at
+                    stage_seconds["terminology"] = (
+                        time.perf_counter() - stage_started_at
+                    )
             else:
                 stage_seconds["terminology"] = 0.0
 
@@ -150,7 +144,7 @@ class DiarizedSpeechPipeline:
         )
         return result
 
-    def transcribe_to_json(self, audio_path: Path, output_path: Path) -> DiarizedTranscript:
+    def transcribe_to_json(self, audio_path, output_path):
         result = self.transcribe(audio_path)
         output_path.write_text(
             json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"

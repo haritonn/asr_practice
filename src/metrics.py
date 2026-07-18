@@ -1,13 +1,7 @@
-"""Text-transcription metrics for an explicitly labelled evaluation set."""
-
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import jiwer
 from tabulate import tabulate
-
-from .models.inference import InferenceResults
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,21 +11,33 @@ class TextMetrics:
     wil: float
     wip: float
 
-    def pretty_print(self) -> str:
+    def pretty_print(self):
         return tabulate(
-            [[f"{self.wer:.2%}", f"{self.cer:.2%}", f"{self.wil:.2%}", f"{self.wip:.2%}"]],
+            [
+                [
+                    f"{self.wer:.2%}",
+                    f"{self.cer:.2%}",
+                    f"{self.wil:.2%}",
+                    f"{self.wip:.2%}",
+                ]
+            ],
             headers=["WER", "CER", "WIL", "WIP"],
             tablefmt="rounded_outline",
         )
 
 
-def normalize_text(text: str) -> str:
+def normalize_text(text):
     return jiwer.Compose(
-        [jiwer.ToLowerCase(), jiwer.RemovePunctuation(), jiwer.RemoveMultipleSpaces(), jiwer.Strip()]
+        [
+            jiwer.ToLowerCase(),
+            jiwer.RemovePunctuation(),
+            jiwer.RemoveMultipleSpaces(),
+            jiwer.Strip(),
+        ]
     )(text)
 
 
-def compute_metrics(records: list[InferenceResults]) -> TextMetrics:
+def compute_metrics(records):
     if not records:
         raise ValueError("At least one labelled inference record is required")
     references = [normalize_text(record.ground_truth) for record in records]

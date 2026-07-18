@@ -11,7 +11,7 @@ wheels/
 
 # Other
 data/
-models/
+/models/
 .ipynb_checkpoints/
 artifacts/
 reports/

@@ -1,9 +1,4 @@
-"""Offline adapter for pyannote Community-1 speaker diarization."""
-
-from __future__ import annotations
-
 import os
-from pathlib import Path
 
 import soundfile as sf
 import torch
@@ -18,11 +13,7 @@ from src.runtime.resources import release_accelerator_memory
 class PyannoteCommunityDiarizer(BaseDiarizer):
     """Run the gated Community-1 model in its dedicated pyannote runtime."""
 
-    def __init__(
-        self,
-        config: PyannoteDiarizationConfig | None = None,
-        token: str | None = None,
-    ):
+    def __init__(self, config=None, token=None):
         self.config = config or PyannoteDiarizationConfig()
         if self.config.num_speakers is not None and (
             self.config.min_speakers is not None or self.config.max_speakers is not None
@@ -37,20 +28,18 @@ class PyannoteCommunityDiarizer(BaseDiarizer):
 
         access_token = token or os.environ.get("HF_TOKEN")
         if not access_token:
-            raise RuntimeError(
-                "Set HF_TOKEN after accepting the model terms."
-            )
+            raise RuntimeError("Set HF_TOKEN after accepting the model terms.")
         self._token = access_token
         self._pipeline = None
 
-    def _ensure_loaded(self) -> None:
+    def _ensure_loaded(self):
         if self._pipeline is None:
             self._pipeline = Pipeline.from_pretrained(
                 self.config.model_id, token=self._token
             )
             self._pipeline.to(torch.device(self.config.device))
 
-    def diarize(self, audio_path: Path) -> DiarizationResult:
+    def diarize(self, audio_path):
         if not audio_path.is_file():
             raise FileNotFoundError(audio_path)
         self._ensure_loaded()
@@ -88,7 +77,7 @@ class PyannoteCommunityDiarizer(BaseDiarizer):
         )
         return DiarizationResult(turns=turns, num_speakers=len(speaker_map))
 
-    def unload(self) -> None:
+    def unload(self):
         if self._pipeline is None:
             return
         self._pipeline = None

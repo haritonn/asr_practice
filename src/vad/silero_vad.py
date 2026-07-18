@@ -1,26 +1,23 @@
-from pathlib import Path
-from typing import List
-
 import librosa
 import numpy as np
 from silero_vad import get_speech_timestamps, load_silero_vad
 
-from ..models.configs import SileroConfig
+from src.runtime.resources import release_accelerator_memory
+
 from ..models.vad import SpeechSegment
 from .base import BaseVoiceDetection
-from src.runtime.resources import release_accelerator_memory
 
 
 class SileroVoiceDetection(BaseVoiceDetection):
-    def __init__(self, conf: SileroConfig):
+    def __init__(self, conf):
         self.config = conf
         self._model = None
 
-    def _ensure_loaded(self) -> None:
+    def _ensure_loaded(self):
         if self._model is None:
             self._model = load_silero_vad()
 
-    def detect(self, audio: Path) -> List[SpeechSegment]:
+    def detect(self, audio):
         self._ensure_loaded()
         wav = self._load_audio(audio)
 
@@ -39,10 +36,10 @@ class SileroVoiceDetection(BaseVoiceDetection):
             SpeechSegment(start=item["start"], end=item["end"]) for item in timestamps
         ]
 
-    def _load_audio(self, audio: Path) -> np.ndarray:
+    def _load_audio(self, audio):
         audio, _ = librosa.load(audio, sr=self.config.sample_rate, mono=True)
         return audio.astype(np.float32)
 
-    def unload(self) -> None:
+    def unload(self):
         self._model = None
         release_accelerator_memory()

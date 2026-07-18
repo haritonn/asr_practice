@@ -1,15 +1,4 @@
-"""GigaAM CTC adapter for the common ASR pipeline.
-
-GigaAM's public inference wrapper does not expose word timestamps.  The
-adapter therefore returns one timestamped segment per VAD chunk.  This keeps
-speaker attribution valid while making the timestamp granularity explicit.
-"""
-
-from __future__ import annotations
-
 import importlib
-from pathlib import Path
-from typing import Sequence
 
 import soundfile as sf
 import torch
@@ -17,18 +6,16 @@ from torch.utils.data import DataLoader
 from transformers import AutoModel
 
 from ..models.asr import Segment, TranscribeResult
-from ..models.configs import GigaAmConfig
-from ..models.vad import SpeechSegment
 from .base import BaseAsr
 from src.runtime.resources import release_accelerator_memory
 
 
 class GigaAmAsr(BaseAsr):
-    def __init__(self, config: GigaAmConfig):
+    def __init__(self, config):
         self.config = config
         self._model = None
 
-    def _ensure_loaded(self) -> None:
+    def _ensure_loaded(self):
         if self._model is not None:
             return
         try:
@@ -44,9 +31,7 @@ class GigaAmAsr(BaseAsr):
                 "run with a network connection and local_files_only=False."
             ) from error
 
-    def transcribe(
-        self, audio: Path, speech_segments: Sequence[SpeechSegment]
-    ) -> TranscribeResult:
+    def transcribe(self, audio, speech_segments):
         self._ensure_loaded()
         if not speech_segments:
             return TranscribeResult(text="", segments=[], language="ru")
@@ -75,14 +60,17 @@ class GigaAmAsr(BaseAsr):
         )
         device = torch.device(self.config.device)
         self._model.model.to(device).eval()
-        texts: list[str] = []
+        texts = []
         with torch.inference_mode():
             for wav_pad, wav_lens in dataloader:
                 wav_pad = wav_pad.to(device).to(self._model.model._dtype)
                 wav_lens = wav_lens.to(device)
                 encoded, encoded_len = self._model.model.forward(wav_pad, wav_lens)
                 texts.extend(
-                    text for text, _ in self._model.model._decode(encoded, encoded_len, wav_lens, False)
+                    text
+                    for text, _ in self._model.model._decode(
+                        encoded, encoded_len, wav_lens, False
+                    )
                 )
 
         segments = [
@@ -95,6 +83,6 @@ class GigaAmAsr(BaseAsr):
             language="ru",
         )
 
-    def unload(self) -> None:
+    def unload(self):
         self._model = None
         release_accelerator_memory()

@@ -1,10 +1,5 @@
-"""Fast validation of an end-to-end inference run before model loading."""
-
-from __future__ import annotations
-
 import os
 from dataclasses import dataclass
-from pathlib import Path
 
 import torch
 from huggingface_hub import snapshot_download
@@ -12,7 +7,6 @@ from huggingface_hub.errors import LocalEntryNotFoundError
 from pydub import AudioSegment
 
 from src.audio.normalization import CANONICAL_CHANNELS, CANONICAL_SAMPLE_RATE
-
 
 PYANNOTE_MODEL_ID = "pyannote/speaker-diarization-community-1"
 
@@ -24,7 +18,7 @@ class PreflightReport:
     errors: list[str]
     warnings: list[str]
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "passed": self.passed,
             "plan": self.plan,
@@ -34,20 +28,20 @@ class PreflightReport:
 
 
 def run_preflight(
-    audio_path: Path,
+    audio_path,
     *,
-    output_path: Path,
-    asr_device: str,
-    vad_device: str,
-    terminology_device: str,
-    diarization_device: str,
-    terminology_catalog: Path,
-    terminology_model: Path,
-    pyannote_model_id: str = PYANNOTE_MODEL_ID,
-) -> PreflightReport:
+    output_path,
+    asr_device,
+    vad_device,
+    terminology_device,
+    diarization_device,
+    terminology_catalog,
+    terminology_model,
+    pyannote_model_id=PYANNOTE_MODEL_ID,
+):
     """Validate local inputs and describe the planned resource allocation."""
-    errors: list[str] = []
-    warnings: list[str] = []
+    errors = []
+    warnings = []
     audio = {}
     if not audio_path.is_file():
         errors.append(f"Audio file is missing: {audio_path}")
@@ -73,36 +67,38 @@ def run_preflight(
         if not path.is_file():
             errors.append(f"{name} is missing: {path}")
 
-    cuda = {
-        "available": torch.cuda.is_available(),
-        "name": None,
-        "total_memory_mib": None,
-        "free_memory_mib": None,
-    }
-    if cuda["available"]:
+    cuda_available = torch.cuda.is_available()
+    if cuda_available:
         properties = torch.cuda.get_device_properties(0)
         free_memory, _ = torch.cuda.mem_get_info(0)
-        cuda.update(
-            {
-                "name": properties.name,
-                "total_memory_mib": round(properties.total_memory / 1024**2),
-                "free_memory_mib": round(free_memory / 1024**2),
-            }
+        cuda = {
+            "available": True,
+            "name": properties.name,
+            "total_memory_mib": round(properties.total_memory / 1024**2),
+            "free_memory_mib": round(free_memory / 1024**2),
+        }
+    else:
+        cuda = {
+            "available": False,
+            "name": None,
+            "total_memory_mib": None,
+            "free_memory_mib": None,
+        }
+
+    cuda_stages = [
+        name
+        for name, device in (
+            ("vad", vad_device),
+            ("asr", asr_device),
+            ("terminology", terminology_device),
+            ("diarization", diarization_device),
         )
-    requested_cuda_stages = {
-        name: device
-        for name, device in {
-            "vad": vad_device,
-            "asr": asr_device,
-            "terminology": terminology_device,
-            "diarization": diarization_device,
-        }.items()
         if device == "cuda"
-    }
-    if requested_cuda_stages and not cuda["available"]:
+    ]
+    if cuda_stages and not cuda_available:
         errors.append(
             "CUDA was requested for "
-            f"{', '.join(sorted(requested_cuda_stages))}, but no CUDA device is available."
+            f"{', '.join(sorted(cuda_stages))}, but no CUDA device is available."
         )
 
     token_present = bool(os.environ.get("HF_TOKEN"))
@@ -151,7 +147,7 @@ def run_preflight(
     )
 
 
-def format_preflight(report: PreflightReport) -> str:
+def format_preflight(report):
     """Render a concise human-readable preflight report."""
     status = "OK" if report.passed else "FAILED"
     lines = [f"Preflight: {status}"]

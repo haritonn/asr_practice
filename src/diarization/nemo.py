@@ -1,7 +1,3 @@
-"""Offline adapter for NeMo speaker diarization (clustering approach)."""
-
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -15,7 +11,7 @@ from src.models.diarization import DiarizationResult, SpeakerTurn
 
 
 class NemoDiarizer(BaseDiarizer):
-    def __init__(self, cfg: NemoDiarizationConfig | None = None):
+    def __init__(self, cfg=None):
         self.cfg = cfg or NemoDiarizationConfig()
         self._temporary_dir = TemporaryDirectory()
         self._work_dir = Path(self._temporary_dir.name)
@@ -25,7 +21,7 @@ class NemoDiarizer(BaseDiarizer):
             self._build_config(self._manifest_path, self._output_dir)
         )
 
-    def _write_manifest(self, audio_path: Path, manifest_path: Path) -> None:
+    def _write_manifest(self, audio_path, manifest_path):
         """Write the one-record manifest expected by NeMo diarization."""
         record = {
             "audio_filepath": str(audio_path.resolve()),
@@ -39,7 +35,7 @@ class NemoDiarizer(BaseDiarizer):
             json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8"
         )
 
-    def _build_config(self, manifest_path: Path, output_dir: Path):
+    def _build_config(self, manifest_path, output_dir):
         """Build the NeMo configuration for a single input manifest."""
 
         return OmegaConf.create(
@@ -98,7 +94,7 @@ class NemoDiarizer(BaseDiarizer):
             }
         )
 
-    def _parse_rttm(self, rttm_path: Path) -> DiarizationResult:
+    def _parse_rttm(self, rttm_path):
         """Convert NeMo RTTM output to the application's diarization model."""
         raw_turns = []
         for line in rttm_path.read_text(encoding="utf-8").splitlines():
@@ -121,7 +117,7 @@ class NemoDiarizer(BaseDiarizer):
         )
         return DiarizationResult(turns=turns, num_speakers=len(speaker_map))
 
-    def diarize(self, audio_path: Path) -> DiarizationResult:
+    def diarize(self, audio_path):
         self._write_manifest(audio_path, self._manifest_path)
         self._clusterer.multiscale_embeddings_and_timestamps = {}
         self._clusterer.diarize()
